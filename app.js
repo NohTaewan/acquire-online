@@ -135,7 +135,7 @@
     state.discardedTiles=state.discardedTiles||{};
     state.setupPickerIndex=state.setupPickerIndex||0;
     state.lastBonusEvent=state.lastBonusEvent||null;
-    state.turnLimitSeconds=Number(state.turnLimitSeconds)||60;
+    state.turnLimitSeconds=(state.turnLimitSeconds===0 || Number(state.turnLimitSeconds)===0) ? 0 : (Number(state.turnLimitSeconds)||60);
     state.turnDeadline=Number(state.turnDeadline)||0;
     state.turnToken=Number(state.turnToken)||0;
     state.toast='';
@@ -255,7 +255,7 @@
     state.remainingDeck=shuffle(ALL_TILES);
     state.setupOptions={}; state.setupPicks={}; state.setupSeeds=[]; state.setupPickerIndex=0;
     state.screen='game'; state.currentPlayer=0; state.phase='SETUP_PICK'; state.round=1;
-    state.turnLimitSeconds=Math.max(30,Math.min(180,Number(ui.lobbyTurnLimitSeconds)||60)); state.turnDeadline=0; state.turnToken=0;
+    state.turnLimitSeconds=Number(ui.lobbyTurnLimitSeconds)===0 ? 0 : Math.max(30,Math.min(180,Number(ui.lobbyTurnLimitSeconds)||60)); state.turnDeadline=0; state.turnToken=0;
     state.modal={type:'setupPick'};
     log('게임 시작 · 전체 타일 더미에서 순서 결정 타일을 한 장씩 뽑습니다.');
     sendNet({type:'start',roomCode:net.roomCode,gameState:snapshotState()});
@@ -288,7 +288,7 @@
     state.hands=state.players.map(()=>state.remainingDeck.splice(0,Math.min(6,state.remainingDeck.length)));
     state.currentPlayer=0; state.phase='PLACE_TILE'; state.modal=null; state.selectedTile=null;
     log(`플레이 순서 확정: ${state.setupSeeds.map((s,i)=>`${i+1}. ${s.name}(${s.tile})`).join(' → ')}`);
-    log(`${state.players[0]?.name||'첫 플레이어'}부터 자동으로 게임을 시작합니다. · 턴 제한 ${state.turnLimitSeconds}초`);
+    log(`${state.players[0]?.name||'첫 플레이어'}부터 자동으로 게임을 시작합니다. · 턴 제한 ${state.turnLimitSeconds===0?'무제한':state.turnLimitSeconds+'초'}`);
     startTurnClock();
     ui.startIntro=true;
     clearTimeout(showStartIntro._t);
@@ -307,7 +307,7 @@
     state.pendingBuy=Object.fromEntries(HOTEL_CHAINS.map(h=>[h.id,0]));
     state.modal=null; state.merger=null; state.logs=[]; state.results=null; state.setupSeeds=[];
     state.setupOptions={}; state.setupPicks={}; state.setupPickerIndex=0; state.drawOptions=[]; state.discardedTiles={}; state.lastBonusEvent=null;
-    state.turnLimitSeconds=Number(ui.lobbyTurnLimitSeconds)||60; state.turnDeadline=0; state.turnToken=0; ui.lastTimedOutToken=null; ui.timeoutHandling=false;
+    state.turnLimitSeconds=Number(ui.lobbyTurnLimitSeconds)===0 ? 0 : (Number(ui.lobbyTurnLimitSeconds)||60); state.turnDeadline=0; state.turnToken=0; ui.lastTimedOutToken=null; ui.timeoutHandling=false;
     ui.localSelectedTile=null; ui.pendingPlacementTile=null; ui.pendingDiscardTile=null;
   }
 
@@ -585,13 +585,20 @@
 
   function startTurnClock() {
     state.turnToken=(Number(state.turnToken)||0)+1;
-    state.turnDeadline=Date.now()+(Number(state.turnLimitSeconds)||60)*1000;
+    state.turnDeadline=Number(state.turnLimitSeconds)===0 ? 0 : Date.now()+(Number(state.turnLimitSeconds)||60)*1000;
     ui.lastTimedOutToken=null;
   }
 
   function turnSecondsLeft() {
+    if(Number(state.turnLimitSeconds)===0) return null;
     if(!state.turnDeadline) return Number(state.turnLimitSeconds)||60;
     return Math.max(0,Math.ceil((state.turnDeadline-Date.now())/1000));
+  }
+
+  function turnTimerText() {
+    const left=turnSecondsLeft();
+    if(left===null) return '무제한';
+    return `${Math.floor(left/60)}:${String(left%60).padStart(2,'0')}`;
   }
 
   function randomChoice(arr) {
@@ -693,6 +700,7 @@
   }
 
   function tickTurnTimer() {
+    if(Number(state.turnLimitSeconds)===0) return;
     if(state.screen!=='game' || !state.turnDeadline || ['SETUP_PICK','SETUP_REVEAL','GAME_OVER'].includes(state.phase)) return;
     const left=turnSecondsLeft();
     const el=document.getElementById('turnTimer');
@@ -855,7 +863,7 @@
             <div class="room-hero"><div><span class="entry-kicker">WAITING ROOM</span><h2>플레이어를 기다리는 중</h2><p>아래 방 코드를 공유하세요. 최대 6명까지 참가할 수 있습니다.</p></div><div class="share-code"><span>ROOM CODE</span><strong>${escapeHtml(net.roomCode)}</strong><button type="button" class="copy-code" id="copyRoom">코드 복사</button></div></div>
             <div class="seat-grid">${Array.from({length:6},(_,i)=>{const m=net.members[i]; return m?`<div class="seat occupied" style="--seat:${seatColor(i)}"><div class="seat-avatar">${escapeHtml((m.name||'?').slice(0,1).toUpperCase())}</div><div class="seat-info"><b>${escapeHtml(m.name||'플레이어')}</b><span>${m.clientId===net.hostId?'방장 · ':''}${m.connected===false?'재접속 대기':'접속됨'}</span></div>${m.clientId===net.clientId?'<span class="me-chip">나</span>':''}</div>`:`<div class="seat empty"><div class="seat-avatar">${i+1}</div><div class="seat-info"><b>빈 자리</b><span>참가자 대기 중</span></div></div>`}).join('')}</div>
           </div>
-          <aside class="waiting-side"><div class="ready-card"><div class="ready-count"><strong>${connectedCount}</strong><span>/ 6</span></div><h3>${connectedCount>=2?'게임을 시작할 수 있어요':'한 명 더 필요해요'}</h3><p>${isHost()?'턴 제한을 정한 뒤 게임을 시작하세요.':'방장이 게임을 시작하면 자동으로 입장합니다.'}</p>${isHost()?`<label class="turn-limit-setting"><span><b>⏱ 플레이어 턴 제한</b><small>30초 단위 · 최대 3분</small></span><select id="turnLimitSelect">${[30,60,90,120,150,180].map(sec=>`<option value="${sec}" ${ui.lobbyTurnLimitSeconds===sec?'selected':''}>${sec<60?sec+'초':sec%60?Math.floor(sec/60)+'분 '+sec%60+'초':sec/60+'분'}</option>`).join('')}</select></label>`:`<div class="turn-limit-view">⏱ 턴 제한은 방장이 게임 시작 시 설정합니다.</div>`}<button class="btn primary hero-btn" id="startGame" ${!isHost()||connectedCount<2?'disabled':''}>${isHost()?'게임 시작':'방장 시작 대기'} <span>→</span></button><button class="btn ghost-danger" id="leaveRoom">방 나가기</button></div><div class="tips-card"><b>시간 초과 시</b><ol><li>타일 단계: 손패의 배치 가능 타일을 무작위 자동 배치</li><li>주식 단계: 매수 없이 진행</li><li>타일 뽑기: 남은 더미에서 1장 자동 뽑기</li><li>자동으로 다음 플레이어 턴 시작</li></ol></div></aside>
+          <aside class="waiting-side"><div class="ready-card"><div class="ready-count"><strong>${connectedCount}</strong><span>/ 6</span></div><h3>${connectedCount>=2?'게임을 시작할 수 있어요':'한 명 더 필요해요'}</h3><p>${isHost()?'턴 제한을 정한 뒤 게임을 시작하세요.':'방장이 게임을 시작하면 자동으로 입장합니다.'}</p>${isHost()?`<label class="turn-limit-setting"><span><b>⏱ 플레이어 턴 제한</b><small>무제한 또는 30초 단위 · 최대 3분</small></span><select id="turnLimitSelect"><option value="0" ${Number(ui.lobbyTurnLimitSeconds)===0?'selected':''}>무제한</option>${[30,60,90,120,150,180].map(sec=>`<option value="${sec}" ${Number(ui.lobbyTurnLimitSeconds)===sec?'selected':''}>${sec<60?sec+'초':sec%60?Math.floor(sec/60)+'분 '+sec%60+'초':sec/60+'분'}</option>`).join('')}</select></label>`:`<div class="turn-limit-view">⏱ 턴 제한은 방장이 게임 시작 시 설정합니다.</div>`}<button class="btn primary hero-btn" id="startGame" ${!isHost()||connectedCount<2?'disabled':''}>${isHost()?'게임 시작':'방장 시작 대기'} <span>→</span></button><button class="btn ghost-danger" id="leaveRoom">방 나가기</button></div><div class="tips-card"><b>시간 초과 시</b><ol><li>타일 단계: 손패의 배치 가능 타일을 무작위 자동 배치</li><li>주식 단계: 매수 없이 진행</li><li>타일 뽑기: 남은 더미에서 1장 자동 뽑기</li><li>자동으로 다음 플레이어 턴 시작</li></ol></div></aside>
         </div>`}
       </section>
       <footer class="site-foot">ACQUIRE 스타일 온라인 프로토타입 · 친구들과 같은 주소에서 플레이</footer>
@@ -868,7 +876,7 @@
     };
     const copy=document.getElementById('copyRoom'); if(copy) copy.onclick=async()=>{ try{ await navigator.clipboard.writeText(net.roomCode); toast('방 코드를 복사했습니다.'); }catch{ toast(`방 코드: ${net.roomCode}`); } };
     const leave=document.getElementById('leaveRoom'); if(leave) leave.onclick=()=>{sendNet({type:'leave'});net.roomCode='';net.members=[];localStorage.removeItem('acquireRoomCode');render();};
-    const turnLimit=document.getElementById('turnLimitSelect'); if(turnLimit) turnLimit.onchange=()=>{ui.lobbyTurnLimitSeconds=Math.max(30,Math.min(180,Number(turnLimit.value)||60));};
+    const turnLimit=document.getElementById('turnLimitSelect'); if(turnLimit) turnLimit.onchange=()=>{const v=Number(turnLimit.value);ui.lobbyTurnLimitSeconds=v===0?0:Math.max(30,Math.min(180,v||60));};
     const startBtn=document.getElementById('startGame'); if(startBtn) startBtn.onclick=startGame;
   }
 
@@ -881,7 +889,7 @@
         </div></aside>
 
         <main class="center-stack">
-          <section class="card turn-banner"><div><div class="big">${escapeHtml(cp.name)}님의 턴</div><div class="small">${phaseLabel()}</div></div><div class="status-row"><span class="turn-timer">⏱ <b id="turnTimer">${Math.floor(turnSecondsLeft()/60)}:${String(turnSecondsLeft()%60).padStart(2,'0')}</b></span><span class="badge green">LIVE MATCH</span><span class="badge gold">ROUND ${state.round}</span>${canEndGame()?'<span class="badge danger-badge">종료 가능</span>':''}</div></section>
+          <section class="card turn-banner"><div><div class="big">${escapeHtml(cp.name)}님의 턴</div><div class="small">${phaseLabel()}</div></div><div class="status-row"><span class="turn-timer ${Number(state.turnLimitSeconds)===0?'unlimited':''}">⏱ <b id="turnTimer">${turnTimerText()}</b></span><span class="badge green">LIVE MATCH</span><span class="badge gold">ROUND ${state.round}</span>${canEndGame()?'<span class="badge danger-badge">종료 가능</span>':''}</div></section>
           <section class="card board-card"><div class="board-head"><h2>◆ 도시 보드 <span style="font-size:11px;color:var(--muted);font-weight:700">CITY GRID</span></h2><div class="status-row"><span class="badge">108 ZONES · 12×9</span><span class="badge">배치 ${Object.keys(state.board).length}</span><span class="badge discard-badge">폐기 ${Object.keys(state.discardedTiles||{}).length}</span></div></div><div class="board-wrap"><div class="board">${ALL_TILES.map(tileCell).join('')}</div></div>
             <div class="legend"><span>▫️ 독립 타일</span><span>✕ 폐기된 타일</span>${HOTEL_CHAINS.map(h=>`<span class="legend-chain"><b class="mini-chain-logo" style="--hc:${h.color}">${h.mark}</b> ${h.name}</span>`).join('')}</div>
           </section>
@@ -1004,7 +1012,7 @@
       return `<div class="modal-back local-modal-back"><div class="modal card info-modal price-modal"><button class="modal-close" data-close-info aria-label="닫기">×</button><span class="entry-kicker">CLASSIC STOCK TABLE</span><h2>📊 클래식 주가표</h2><p>호텔 체인의 현재 크기에 따라 주식 1장 가격과 최대/2대 주주 보너스가 결정됩니다.</p><div class="price-tier-legend"><span><b style="--pc:#e84e5f">●</b> 색슨 · 타워</span><span><b style="--pc:#5b78d4">●</b> 아메리칸 · 페스티벌 · 월드와이드</span><span><b style="--pc:#28a6ca">●</b> 콘티넨탈 · 임페리얼</span></div><div class="price-table-wrap"><table class="price-table"><thead><tr><th>1주 가격</th><th>색슨/타워<br>체인 크기</th><th>중간 3체인<br>체인 크기</th><th>콘티넨탈/임페리얼<br>체인 크기</th><th>최대 주주</th><th>2대 주주</th></tr></thead><tbody>${rows.map(r=>`<tr>${r.map((c,i)=>`<td class="${i===0?'price-cell':i>=4?'bonus-cell':''}">${c}</td>`).join('')}</tr>`).join('')}</tbody></table></div><div class="rule-note">주주 보너스는 주가의 10배 / 5배입니다. 단독 주주는 두 보너스를 모두 받고, 최대주주 동률은 두 보너스를 합쳐 나눕니다. 2대주주만 동률이면 2대주주 보너스만 나누며, 분배액은 $100 단위로 올림합니다.</div><button class="btn primary" data-close-info style="width:100%;margin-top:14px">확인</button></div></div>`;
     }
     if(ui.modal==='history') return `<div class="modal-back local-modal-back"><div class="modal card info-modal history-modal"><button class="modal-close" data-close-info aria-label="닫기">×</button><span class="entry-kicker">MATCH HISTORY</span><h2>☷ 게임 이력</h2><p>공개 행동만 기록됩니다. 새로 뽑은 비공개 타일 좌표는 다른 플레이어에게 기록되지 않습니다.</p><div class="history-list">${state.logs.map((x,i)=>`<div class="history-row"><span>${state.logs.length-i}</span><p>${escapeHtml(x)}</p></div>`).join('')||'<div class="history-empty">아직 기록이 없습니다.</div>'}</div><button class="btn primary" data-close-info style="width:100%;margin-top:14px">닫기</button></div></div>`;
-    if(ui.modal==='rules') return `<div class="modal-back local-modal-back"><div class="modal card info-modal"><button class="modal-close" data-close-info aria-label="닫기">×</button><span class="entry-kicker">HOW TO PLAY</span><h2>게임 규칙</h2><div class="rules-grid"><section><b>① 순서·타일 배치</b><p>게임 시작 시 뒤집힌 전체 타일 더미에서 1장씩 뽑습니다. 모두 뽑은 뒤 숫자가 낮고 같은 숫자면 A에 가까운 순서로 턴을 정하고 즉시 자동으로 게임을 시작합니다. 게임 중에는 내 타일 1장을 같은 좌표에 놓습니다.</p></section><section><b>② 체인과 안전 체인</b><p>연결된 타일이 2개 이상이면 호텔 체인이 됩니다. 11칸 이상인 체인은 안전 체인이며 다른 안전 체인과 합병되지 않습니다.</p></section><section><b>③ 합병</b><p>더 큰 체인이 존속합니다. 동률이면 합병을 만든 플레이어가 존속 체인을 고릅니다. 소멸 체인의 주주가 1명뿐이면 최대+2대 보너스를 모두 받고, 최대주주가 동률이면 두 보너스를 합쳐 나눕니다. 소멸 체인 주식은 매도·2:1 교환·보유를 선택합니다.</p></section><section><b>④ 주식 매수·타일 보충</b><p>타일 처리 후 활성 체인의 주식을 합계 최대 3주까지 살 수 있습니다. 턴 제한 시간이 끝나면 현재 단계에 따라 자동 진행됩니다: 타일 단계는 배치 가능한 손패 타일을 무작위 배치하고 주식은 사지 않으며, 주식 단계는 매수 없이, 타일 뽑기 단계는 자동으로 1장을 뽑고 턴을 마칩니다.</p></section><section><b>⑤ 영구 불가 타일</b><p>안전 체인끼리 합병시키는 등 영구적으로 놓을 수 없는 손패 타일은 자신의 턴에 폐기할 수 있고, 폐기 좌표는 보드에 ✕로 공개됩니다.</p></section><section><b>승리 조건</b><p>종료 시 활성 체인의 주주 보너스와 보유 주식을 현금화한 뒤 최종 자산이 가장 많은 플레이어가 승리합니다.</p></section></div><button class="btn primary" data-close-info style="width:100%;margin-top:16px">확인</button></div></div>`;
+    if(ui.modal==='rules') return `<div class="modal-back local-modal-back"><div class="modal card info-modal"><button class="modal-close" data-close-info aria-label="닫기">×</button><span class="entry-kicker">HOW TO PLAY</span><h2>게임 규칙</h2><div class="rules-grid"><section><b>① 순서·타일 배치</b><p>게임 시작 시 뒤집힌 전체 타일 더미에서 1장씩 뽑습니다. 모두 뽑은 뒤 숫자가 낮고 같은 숫자면 A에 가까운 순서로 턴을 정하고 즉시 자동으로 게임을 시작합니다. 게임 중에는 내 타일 1장을 같은 좌표에 놓습니다.</p></section><section><b>② 체인과 안전 체인</b><p>연결된 타일이 2개 이상이면 호텔 체인이 됩니다. 11칸 이상인 체인은 안전 체인이며 다른 안전 체인과 합병되지 않습니다.</p></section><section><b>③ 합병</b><p>더 큰 체인이 존속합니다. 동률이면 합병을 만든 플레이어가 존속 체인을 고릅니다. 소멸 체인의 주주가 1명뿐이면 최대+2대 보너스를 모두 받고, 최대주주가 동률이면 두 보너스를 합쳐 나눕니다. 소멸 체인 주식은 매도·2:1 교환·보유를 선택합니다.</p></section><section><b>④ 주식 매수·타일 보충</b><p>타일 처리 후 활성 체인의 주식을 합계 최대 3주까지 살 수 있습니다. 방장은 시작 전에 턴 제한을 무제한 또는 30초 단위(최대 3분)로 정할 수 있습니다. 제한 시간이 있는 경우 시간이 끝나면 현재 단계에 따라 자동 진행됩니다: 타일 단계는 배치 가능한 손패 타일을 무작위 배치하고 주식은 사지 않으며, 주식 단계는 매수 없이, 타일 뽑기 단계는 자동으로 1장을 뽑고 턴을 마칩니다.</p></section><section><b>⑤ 영구 불가 타일</b><p>안전 체인끼리 합병시키는 등 영구적으로 놓을 수 없는 손패 타일은 자신의 턴에 폐기할 수 있고, 폐기 좌표는 보드에 ✕로 공개됩니다.</p></section><section><b>승리 조건</b><p>종료 시 활성 체인의 주주 보너스와 보유 주식을 현금화한 뒤 최종 자산이 가장 많은 플레이어가 승리합니다.</p></section></div><button class="btn primary" data-close-info style="width:100%;margin-top:16px">확인</button></div></div>`;
     return `<div class="modal-back local-modal-back"><div class="modal card info-modal"><button class="modal-close" data-close-info aria-label="닫기">×</button><span class="entry-kicker">DISPLAY</span><h2>화면 설정</h2><div class="settings-list"><label><span><b>보드 크기</b><small>PC에서 보드 칸 크기를 조절합니다.</small></span><select id="boardScaleSetting"><option value="90" ${ui.settings.boardScale===90?'selected':''}>90%</option><option value="100" ${ui.settings.boardScale===100?'selected':''}>100%</option><option value="110" ${ui.settings.boardScale===110?'selected':''}>110%</option></select></label><label><span><b>진행 도움말</b><small>내 타일 아래 단계 설명을 표시합니다.</small></span><input id="hintSetting" type="checkbox" ${ui.settings.showHints?'checked':''}></label><label><span><b>애니메이션 줄이기</b><small>게임 시작과 결과 화면의 움직임을 줄입니다.</small></span><input id="motionSetting" type="checkbox" ${ui.settings.reducedMotion?'checked':''}></label></div><button class="btn primary" data-save-settings style="width:100%;margin-top:16px">설정 저장</button></div></div>`;
   }
 

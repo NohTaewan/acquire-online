@@ -317,3 +317,7 @@ body::before{content:"";position:fixed;inset:0;pointer-events:none;opacity:.16;b
 @keyframes timerPulse{from{transform:scale(1)}to{transform:scale(1.035)}}
 @media (max-width:700px){.turn-limit-setting{align-items:stretch;flex-direction:column}.turn-limit-setting select{width:100%;font-size:16px}.turn-timer{min-width:70px;padding:6px 9px}.turn-banner .status-row{gap:6px}}
 .reduced-motion .turn-timer.urgent{animation:none}
+
+/* v12: unlimited turn timer */
+.turn-timer.unlimited{white-space:nowrap}
+.turn-timer.unlimited b{letter-spacing:-.02em}
