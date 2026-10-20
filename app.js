@@ -7,9 +7,9 @@
     {id:'Tower', name:'타워', color:'#d7a93a', base:200, mark:'T'},
     {id:'American', name:'아메리칸', color:'#5b78d4', base:300, mark:'A'},
     {id:'Festival', name:'페스티벌', color:'#2ec59f', base:300, mark:'F'},
-    {id:'Worldwide', name:'월드와이드', color:'#9061c7', base:400, mark:'W'},
+    {id:'Worldwide', name:'월드와이드', color:'#9061c7', base:300, mark:'W'},
     {id:'Continental', name:'콘티넨탈', color:'#28a6ca', base:400, mark:'C'},
-    {id:'Imperial', name:'임페리얼', color:'#f08a32', base:500, mark:'I'},
+    {id:'Imperial', name:'임페리얼', color:'#f08a32', base:400, mark:'I'},
   ];
   const CHAIN = Object.fromEntries(HOTEL_CHAINS.map(h=>[h.id,h]));
 
@@ -36,8 +36,10 @@
     setupSeeds: [],
     setupOptions: {},
     setupPicks: {},
+    setupPickerIndex: 0,
     drawOptions: [],
     discardedTiles: {},
+    lastBonusEvent: null,
   };
 
   const app = document.getElementById('app');
@@ -59,6 +61,8 @@
     localSelectedTile: null,
     pendingPlacementTile: null,
     pendingDiscardTile: null,
+    drawReveal: null,
+    bonusEffect: null,
     settings: (() => {
       try { return Object.assign({boardScale:100,showHints:true,reducedMotion:false}, JSON.parse(localStorage.getItem('acquireUiSettings')||'{}')); }
       catch { return {boardScale:100,showHints:true,reducedMotion:false}; }
@@ -119,13 +123,17 @@
     if(!remote) return;
     const wasLobby=state.screen!=='game';
     const previousPhase=state.phase;
+    const previousBonusId=state.lastBonusEvent?.id || null;
     Object.keys(state).forEach(k=>delete state[k]);
     Object.assign(state, remote);
     state.discardedTiles=state.discardedTiles||{};
+    state.setupPickerIndex=state.setupPickerIndex||0;
+    state.lastBonusEvent=state.lastBonusEvent||null;
     state.toast='';
-    ui.localSelectedTile=null; ui.pendingPlacementTile=null; ui.pendingDiscardTile=null;
-    const enteringPlayableGame=(wasLobby && state.screen==='game' && state.phase!=='SETUP_PICK');
-    const setupJustFinished=(previousPhase==='SETUP_PICK' && state.phase==='PLACE_TILE');
+    ui.localSelectedTile=null; ui.pendingPlacementTile=null; ui.pendingDiscardTile=null; ui.drawReveal=null; ui.bonusEffect=null;
+    if(state.lastBonusEvent?.id && state.lastBonusEvent.id!==previousBonusId) showBonusEffectLocal(state.lastBonusEvent);
+    const enteringPlayableGame=(wasLobby && state.screen==='game' && !['SETUP_PICK','SETUP_REVEAL'].includes(state.phase));
+    const setupJustFinished=(previousPhase==='SETUP_REVEAL' && state.phase==='PLACE_TILE');
     if(enteringPlayableGame || setupJustFinished) showStartIntro();
     else render();
   }
@@ -147,11 +155,30 @@
   function escapeHtml(str) { return String(str).replace(/[&<>'"]/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[ch])); }
   function chainName(id) { return CHAIN[id]?.name || id; }
   function chainColor(id) { return CHAIN[id]?.color || '#8fa9c2'; }
-  function log(msg) { state.logs.unshift(msg); state.logs = state.logs.slice(0,18); }
+  function log(msg) { state.logs.unshift(`[R${state.round||1}] ${msg}`); state.logs = state.logs.slice(0,80); }
   function toast(msg) {
     state.toast = msg; render();
     clearTimeout(toast._t);
     toast._t=setTimeout(()=>{state.toast='';render();},1800);
+  }
+
+  function showBonusEffectLocal(event) {
+    if(!event || !event.payouts?.length) return;
+    ui.bonusEffect=event;
+    clearTimeout(showBonusEffectLocal._t);
+    showBonusEffectLocal._t=setTimeout(()=>{ui.bonusEffect=null;render();},2600);
+    render();
+  }
+  function announceBonus(chainId,payouts) {
+    if(!payouts?.length) return;
+    const event={id:`b_${Date.now()}_${Math.random().toString(36).slice(2,7)}`,chainId,payouts};
+    state.lastBonusEvent=event;
+    showBonusEffectLocal(event);
+  }
+  function showDrawReveal(tile) {
+    ui.drawReveal={tile,id:`d_${Date.now()}`};
+    clearTimeout(showDrawReveal._t);
+    showDrawReveal._t=setTimeout(()=>{ui.drawReveal=null;render();},1800);
   }
 
   function coord(tile) {
@@ -217,33 +244,31 @@
     state.board={};
     state.hands=state.players.map(()=>[]);
     state.remainingDeck=shuffle(ALL_TILES);
-    state.setupOptions={}; state.setupPicks={}; state.setupSeeds=[];
-    // 순서 결정용 타일은 각 플레이어에게 랜덤 후보 3장을 따로 제공합니다.
-    state.players.forEach(p=>{ state.setupOptions[p.clientId]=state.remainingDeck.splice(0,Math.min(3,state.remainingDeck.length)); });
+    state.setupOptions={}; state.setupPicks={}; state.setupSeeds=[]; state.setupPickerIndex=0;
     state.screen='game'; state.currentPlayer=0; state.phase='SETUP_PICK'; state.round=1;
     state.modal={type:'setupPick'};
-    log('게임 시작 · 각 플레이어가 순서 결정 타일을 선택합니다.');
+    log('게임 시작 · 전체 타일 더미에서 순서 결정 타일을 한 장씩 뽑습니다.');
     sendNet({type:'start',roomCode:net.roomCode,gameState:snapshotState()});
     render();
   }
 
-  function chooseSetupTile(tile) {
+  function chooseSetupTile(index) {
     if(state.phase!=='SETUP_PICK') return;
-    const mine=state.players.find(p=>p.clientId===net.clientId);
-    if(!mine) return;
-    const options=state.setupOptions[mine.clientId]||[];
-    if(!options.includes(tile)) return toast('선택할 수 없는 타일입니다.');
-    if(state.setupPicks[mine.clientId]) return toast('이미 순서 타일을 선택했습니다.');
-    state.setupPicks[mine.clientId]=tile;
-    log(`${mine.name}: 순서 결정 타일 선택 완료`);
-    if(Object.keys(state.setupPicks).length===state.players.length) finalizeSetupOrder();
+    const picker=state.players[state.setupPickerIndex];
+    if(!picker || picker.clientId!==net.clientId) return toast('현재는 다른 플레이어가 타일을 뽑는 중입니다.');
+    if(state.setupPicks[picker.clientId]) return toast('이미 순서 타일을 뽑았습니다.');
+    const i=Number(index);
+    if(!Number.isInteger(i)||i<0||i>=state.remainingDeck.length) return toast('선택할 수 없는 타일입니다.');
+    const tile=state.remainingDeck.splice(i,1)[0];
+    state.setupPicks[picker.clientId]=tile;
+    log(`${picker.name}: 순서 결정 타일 뽑기 완료`);
+    state.setupPickerIndex++;
+    state.remainingDeck=shuffle(state.remainingDeck);
+    if(state.setupPickerIndex>=state.players.length) finalizeSetupOrder();
     else render();
   }
 
   function finalizeSetupOrder() {
-    const picked=new Set(Object.values(state.setupPicks));
-    Object.values(state.setupOptions).flat().forEach(t=>{ if(!picked.has(t)) state.remainingDeck.push(t); });
-    state.remainingDeck=shuffle(state.remainingDeck);
     const ordered=state.players.map(p=>({player:p,tile:state.setupPicks[p.clientId]}))
       .sort((a,b)=>tileSortValue(a.tile)-tileSortValue(b.tile));
     state.players=ordered.map((x,i)=>({...x.player,profileColor:seatColor(i)}));
@@ -251,8 +276,18 @@
     state.board={};
     state.setupSeeds.forEach(s=>state.board[s.tile]={chain:null,seed:true});
     state.hands=state.players.map(()=>state.remainingDeck.splice(0,Math.min(6,state.remainingDeck.length)));
-    state.currentPlayer=0; state.phase='PLACE_TILE'; state.modal=null; state.selectedTile=null;
-    log(`플레이 순서: ${state.setupSeeds.map((s,i)=>`${i+1}. ${s.name}(${s.tile})`).join(' → ')}`);
+    state.currentPlayer=0; state.phase='SETUP_REVEAL'; state.modal={type:'setupReveal'}; state.selectedTile=null;
+    log(`플레이 순서 확정: ${state.setupSeeds.map((s,i)=>`${i+1}. ${s.name}(${s.tile})`).join(' → ')}`);
+    render();
+  }
+
+  function confirmSetupReveal() {
+    if(state.phase!=='SETUP_REVEAL'||!isHost()) return;
+    state.phase='PLACE_TILE'; state.modal=null;
+    log(`${state.players[0]?.name||'첫 플레이어'}부터 게임을 시작합니다.`);
+    ui.startIntro=true;
+    clearTimeout(showStartIntro._t);
+    showStartIntro._t=setTimeout(()=>{ui.startIntro=false;render();},2600);
     render();
   }
 
@@ -262,7 +297,7 @@
     state.selectedTile=null; state.pendingPlacement=null; state.phase='PLACE_TILE'; state.currentPlayer=0;
     state.pendingBuy=Object.fromEntries(HOTEL_CHAINS.map(h=>[h.id,0]));
     state.modal=null; state.merger=null; state.logs=[]; state.results=null; state.setupSeeds=[];
-    state.setupOptions={}; state.setupPicks={}; state.drawOptions=[]; state.discardedTiles={};
+    state.setupOptions={}; state.setupPicks={}; state.setupPickerIndex=0; state.drawOptions=[]; state.discardedTiles={}; state.lastBonusEvent=null;
     ui.localSelectedTile=null; ui.pendingPlacementTile=null; ui.pendingDiscardTile=null;
   }
 
@@ -424,27 +459,33 @@
     const holders=state.players.map((p,i)=>({i,count:p.stocks[chainId]})).filter(x=>x.count>0).sort((a,b)=>b.count-a.count);
     if(!holders.length) return [];
     const {major,minor}=bonuses(chainId,size); const payouts=[];
+    const give=(h,amount,label)=>{state.players[h.i].cash+=amount;payouts.push({playerIndex:h.i,name:state.players[h.i].name,amount,label});};
     const top=holders[0].count; const topH=holders.filter(h=>h.count===top);
     if(topH.length>=2){
       const each=roundUp100((major+minor)/topH.length);
-      topH.forEach(h=>{state.players[h.i].cash+=each;payouts.push(`${state.players[h.i].name} ${money(each)}`);});
+      topH.forEach(h=>give(h,each,'공동 최대주주'));
     } else {
-      state.players[topH[0].i].cash+=major; payouts.push(`${state.players[topH[0].i].name} ${money(major)}(1위)`);
+      give(topH[0],major,'최대주주');
       const rest=holders.filter(h=>h.count<top);
-      if(rest.length===0){ state.players[topH[0].i].cash+=minor; payouts.push(`${state.players[topH[0].i].name} ${money(minor)}(2위 보너스)`); }
+      if(rest.length===0){ give(topH[0],minor,'2대 주주 보너스'); }
       else {
         const second=rest[0].count; const seconds=rest.filter(h=>h.count===second); const each=roundUp100(minor/seconds.length);
-        seconds.forEach(h=>{state.players[h.i].cash+=each;payouts.push(`${state.players[h.i].name} ${money(each)}(2위)`);});
+        seconds.forEach(h=>give(h,each,seconds.length>1?'공동 2대 주주':'2대 주주'));
       }
     }
     return payouts;
+  }
+
+  function payoutText(payouts){
+    return payouts.map(x=>`${x.name} ${money(x.amount)}(${x.label})`).join(', ');
   }
 
   function processDefunctChain(def) {
     const m=state.merger; const size=m.sizes[def];
     m.activeDefunct=def;
     const payouts=payShareholderBonuses(def,size);
-    log(`${chainName(def)} 소멸 (${size}칸) · 보너스 ${payouts.length?payouts.join(', '):'주주 없음'}`);
+    log(`${chainName(def)} 소멸 (${size}칸) · 주주 보너스 ${payouts.length?payoutText(payouts):'주주 없음'}`);
+    announceBonus(def,payouts);
     m.playerQueue=[];
     for(let k=0;k<state.players.length;k++){
       const idx=(state.currentPlayer+k)%state.players.length;
@@ -549,31 +590,21 @@
   function openDrawTilePopup() {
     state.phase='DRAW_TILE';
     state.drawOptions=[];
-    let guard=108;
-    // 영구 배치 불가 타일은 공개 폐기하고, 선택 가능한 랜덤 후보를 최대 3장 만듭니다.
-    while(state.drawOptions.length<3 && state.remainingDeck.length && guard-->0){
-      const tile=takeRandomTileFromDeck();
-      if(!tile) break;
-      if(isPermanentTile(tile)) {
-        state.discardedTiles=state.discardedTiles||{};
-        state.discardedTiles[tile]={by:'공개 드로우',round:state.round,reason:'영구 배치 불가'};
-        log(`${currentPlayer().name}: 영구 불가 타일 ${tile} 공개 폐기`); continue;
-      }
-      state.drawOptions.push(tile);
-    }
-    if(!state.drawOptions.length) return finishTurnAfterDraw();
+    state.remainingDeck=shuffle(state.remainingDeck);
+    if(!state.remainingDeck.length) return finishTurnAfterDraw();
     state.modal={type:'drawTile'};
     render();
   }
 
-  function chooseDrawTile(tile) {
+  function chooseDrawTile(index) {
     if(state.phase!=='DRAW_TILE'||!canControlCurrent()) return;
-    if(!state.drawOptions.includes(tile)) return toast('선택할 수 없는 타일입니다.');
+    const i=Number(index);
+    if(!Number.isInteger(i)||i<0||i>=state.remainingDeck.length) return toast('선택할 수 없는 타일입니다.');
+    const tile=state.remainingDeck.splice(i,1)[0];
     if(state.hands[state.currentPlayer].length<6) state.hands[state.currentPlayer].push(tile);
-    const rest=state.drawOptions.filter(t=>t!==tile);
-    state.remainingDeck=shuffle(state.remainingDeck.concat(rest));
-    log(`${currentPlayer().name}: 보충 타일 ${tile} 선택`);
+    log(`${currentPlayer().name}: 보충 타일 1장 뽑기 완료`);
     state.drawOptions=[]; state.modal=null;
+    showDrawReveal(tile);
     finishTurnAfterDraw();
   }
 
@@ -588,7 +619,7 @@
 
   // 이전 버전의 턴 종료 호출과의 호환용. 현재는 타일 선택 팝업 완료 시 자동으로 다음 턴으로 넘어갑니다.
   function endTurn() {
-    if(state.phase==='DRAW_TILE' && !state.drawOptions.length) finishTurnAfterDraw();
+    if(state.phase==='DRAW_TILE') return toast('팝업의 뒤집힌 타일 중 1장을 골라 주세요.');
   }
 
   function canEndGame() {
@@ -602,7 +633,7 @@
     const bonusLog=[];
     activeChains().forEach(id=>{
       const payouts=payShareholderBonuses(id,chainSize(id));
-      bonusLog.push(`${chainName(id)}: ${payouts.join(', ')||'주주 없음'}`);
+      bonusLog.push(`${chainName(id)}: ${payouts.length?payoutText(payouts):'주주 없음'}`);
       const price=stockPrice(id);
       state.players.forEach(p=>{
         const n=p.stocks[id]; if(n){p.cash+=n*price; state.chainBank[id]+=n; p.stocks[id]=0;}
@@ -613,7 +644,7 @@
   }
 
   function phaseLabel() {
-    return ({PLACE_TILE:'① 타일 배치',CHOOSE_CHAIN:'체인 창립',CHOOSE_SURVIVOR:'합병 존속 체인 선택',CHOOSE_DEFUNCT:'소멸 체인 처리 순서 선택',SETUP_PICK:'순서 결정 타일 선택',MERGER_DECISION:'합병 주식 처리',BUY_STOCK:'② 주식 매수',DRAW_TILE:'③ 보충 타일 선택',END_TURN:'③ 턴 종료',GAME_OVER:'게임 종료'})[state.phase]||state.phase;
+    return ({PLACE_TILE:'① 타일 배치',CHOOSE_CHAIN:'체인 창립',CHOOSE_SURVIVOR:'합병 존속 체인 선택',CHOOSE_DEFUNCT:'소멸 체인 처리 순서 선택',SETUP_PICK:'순서 결정 타일 뽑기',SETUP_REVEAL:'플레이 순서 공개',MERGER_DECISION:'합병 주식 처리',BUY_STOCK:'② 주식 매수',DRAW_TILE:'③ 보충 타일 선택',END_TURN:'③ 턴 종료',GAME_OVER:'게임 종료'})[state.phase]||state.phase;
   }
 
   function playerStockTags(p) {
@@ -705,8 +736,8 @@
         <aside class="card market"><div class="section-title"><span>📈 STOCK EXCHANGE</span><span class="badge">최대 3주</span></div>
           <div class="market-summary"><div style="color:var(--muted);font-size:12px">선택 ${buyCount}/3주 · 총 구매 금액</div><div class="total">${money(buyCost)}</div><div style="color:var(--muted);font-size:11px">보유 현금 ${money(cp.cash)}</div></div>
           <div class="hotel-list">${HOTEL_CHAINS.map(h=>hotelMarketHtml(h)).join('')}</div>
-          <div class="market-actions"><button class="btn primary" id="confirmBuy" ${!myTurn||state.phase!=='BUY_STOCK'?'disabled':''}>${buyCount?'선택 주식 구매 확정':'주식 구매 없이 진행'}</button><button class="btn primary" id="endTurn" ${state.phase!=='DRAW_TILE'?'disabled':''}>타일 선택 대기 중</button><button class="btn gold" id="declareEnd" ${!myTurn||!canEndGame()||!['BUY_STOCK','END_TURN'].includes(state.phase)?'disabled':''}>🏁 게임 종료 선언</button><button class="btn danger" id="resetGame">방 나가기</button></div>
-          <div class="log-box"><div class="section-title"><span>게임 로그</span></div>${state.logs.map(x=>`<div class="log-line">${escapeHtml(x)}</div>`).join('')||'<div class="log-line">게임 기록이 여기에 표시됩니다.</div>'}</div>
+          <div class="market-actions"><button class="btn primary" id="confirmBuy" ${!myTurn||state.phase!=='BUY_STOCK'?'disabled':''}>${buyCount?'선택 주식 구매 확정':'주식 구매 없이 진행'}</button><button class="btn primary" id="endTurn" disabled>팝업에서 타일 뽑기</button><button class="btn gold" id="declareEnd" ${!myTurn||!canEndGame()||!['BUY_STOCK','END_TURN'].includes(state.phase)?'disabled':''}>🏁 게임 종료 선언</button><button class="btn danger" id="resetGame">방 나가기</button></div>
+          <div class="log-box"><div class="section-title"><span>게임 로그</span><button type="button" class="mini-link-btn" data-open-info="history">전체 이력</button></div>${state.logs.slice(0,12).map(x=>`<div class="log-line">${escapeHtml(x)}</div>`).join('')||'<div class="log-line">게임 기록이 여기에 표시됩니다.</div>'}</div>
         </aside>
       </div>
     </div>${renderModal()}${state.toast?`<div class="toast">${state.toast}</div>`:''}`;
@@ -736,10 +767,11 @@
   }
 
   function helpText() {
-    if(state.phase==='SETUP_PICK') return '팝업에서 랜덤 순서 결정 타일 1장을 고르세요. 숫자가 낮고, 같은 숫자면 A에 가까운 알파벳이 먼저입니다.';
+    if(state.phase==='SETUP_PICK') return '뒤집힌 전체 타일 더미에서 1장을 고릅니다. 내용은 선택하기 전까지 보이지 않습니다.';
+    if(state.phase==='SETUP_REVEAL') return '모든 플레이어가 뽑은 타일을 공개해 순서를 확정합니다.';
     if(state.phase==='PLACE_TILE') return ui.localSelectedTile?`<strong>${ui.localSelectedTile}</strong> 선택됨. 보드의 같은 좌표를 누르면 나에게만 배치 확인창이 뜹니다.`:'초록색 타일은 배치 가능, 빨간색 <b>폐기 가능</b> 타일은 영구 배치 불가입니다. 폐기를 확정하면 모든 플레이어 보드에 ✕ 폐기 표시가 남습니다.';
     if(state.phase==='BUY_STOCK') return '활성 체인의 주식을 합계 최대 3주까지 살 수 있습니다. 사지 않고 진행해도 됩니다.';
-    if(state.phase==='DRAW_TILE') return '주식 거래가 끝났습니다. 팝업에 나온 랜덤 후보 중 보충할 타일 1장을 고르세요.';
+    if(state.phase==='DRAW_TILE') return '주식 거래가 끝났습니다. 뒤집혀 섞인 전체 남은 타일 더미에서 1장을 직접 고르세요.';
     if(state.phase==='END_TURN') return '턴 종료 처리 중입니다.';
     if(state.phase==='MERGER_DECISION') return '합병 주식 처리를 완료해야 다음 단계로 진행됩니다.';
     return '화면의 선택 창에서 현재 단계를 완료하세요.';
@@ -755,15 +787,19 @@
     if(m.type==='setupPick') {
       const mine=state.players.find(p=>p.clientId===net.clientId);
       const picked=mine?state.setupPicks[mine.clientId]:null;
-      const opts=mine?(state.setupOptions[mine.clientId]||[]):[];
+      const picker=state.players[state.setupPickerIndex];
       const done=Object.keys(state.setupPicks||{}).length;
-      if(!mine) return `<div class="modal-back"><div class="modal card"><h2>🎲 순서 결정 중</h2><p>플레이어들의 타일 선택을 기다리고 있습니다.</p></div></div>`;
-      if(picked) return `<div class="modal-back"><div class="modal card tile-pick-modal"><span class="entry-kicker">TURN ORDER</span><h2>✅ ${escapeHtml(picked)} 선택 완료</h2><p>다른 플레이어의 선택을 기다리는 중입니다. (${done}/${state.players.length})</p><div class="picked-order-hint">숫자가 낮을수록 먼저 · 같은 숫자는 A에 가까울수록 먼저</div></div></div>`;
-      return `<div class="modal-back"><div class="modal card tile-pick-modal"><span class="entry-kicker">TURN ORDER</span><h2>🎲 순서 결정 타일을 고르세요</h2><p>랜덤으로 나온 타일 중 1장을 선택합니다. 선택 결과로 플레이어 순서가 정해집니다.</p><div class="tile-choice-grid">${opts.map(t=>`<button class="popup-tile" data-setup-pick="${t}"><span>${t}</span><small>선택</small></button>`).join('')}</div><div class="picked-order-hint">우선순위: 1A → 1B → … → 1I → 2A → … → 12I</div></div></div>`;
+      if(!mine) return `<div class="modal-back"><div class="modal card"><h2>🎲 순서 결정 중</h2><p>플레이어들의 타일 뽑기를 기다리고 있습니다.</p></div></div>`;
+      if(picked) return `<div class="modal-back"><div class="modal card tile-pick-modal deck-modal"><span class="entry-kicker">TURN ORDER</span><h2>✅ 내가 뽑은 타일: ${escapeHtml(picked)}</h2><p>${picker?`${escapeHtml(picker.name)}님이 타일을 고르는 중입니다.`:'모든 선택이 끝났습니다.'} (${done}/${state.players.length})</p><div class="picked-order-hint">모두 뽑은 뒤 한꺼번에 공개하고 순서를 정합니다.</div></div></div>`;
+      if(!picker || picker.clientId!==net.clientId) return `<div class="modal-back"><div class="modal card tile-pick-modal deck-modal"><span class="entry-kicker">TURN ORDER</span><h2>⏳ ${escapeHtml(picker?.name||'다른 플레이어')} 타일 뽑기</h2><p>전체 타일은 뒤집혀 있으며 현재 플레이어만 한 장을 고를 수 있습니다. (${done}/${state.players.length})</p></div></div>`;
+      return `<div class="modal-back"><div class="modal card tile-pick-modal deck-modal"><span class="entry-kicker">TURN ORDER</span><h2>🎲 뒤집힌 타일 1장을 고르세요</h2><p>전체 타일 더미가 무작위로 섞여 있습니다. 좌표는 고르기 전까지 보이지 않습니다.</p><div class="deck-meta"><span>남은 타일 <b>${state.remainingDeck.length}</b>장</span><span>선택 ${done+1}/${state.players.length}</span></div><div class="face-down-deck">${state.remainingDeck.map((_,i)=>`<button class="tile-back" data-setup-pick-index="${i}" aria-label="뒤집힌 순서 타일 ${i+1}"><i></i><span>◆</span></button>`).join('')}</div><div class="picked-order-hint">모두 선택 후 공개 · 우선순위 1A → 1B → … → 12I</div></div></div>`;
+    }
+    if(m.type==='setupReveal') {
+      return `<div class="modal-back"><div class="modal card tile-pick-modal setup-reveal-modal"><span class="entry-kicker">TURN ORDER RESULT</span><h2>🎉 플레이 순서가 정해졌습니다</h2><p>숫자가 낮을수록 먼저, 같은 숫자에서는 A에 가까울수록 먼저입니다.</p><div class="order-reveal-list">${state.setupSeeds.map((x,i)=>`<div class="order-reveal-row"><b>${i+1}</b><span>${escapeHtml(x.name)}</span><strong>${escapeHtml(x.tile)}</strong></div>`).join('')}</div>${isHost()?'<button class="btn primary" id="confirmSetupReveal" style="width:100%;margin-top:14px">이 순서로 게임 시작</button>':'<div class="picked-order-hint">방장이 게임 시작을 누르기를 기다리고 있습니다.</div>'}</div></div>`;
     }
     if(m.type==='drawTile') {
-      if(!canControlCurrent()) return `<div class="modal-back"><div class="modal card tile-pick-modal"><h2>⏳ ${escapeHtml(currentPlayer().name)} 타일 선택 대기</h2><p>현재 플레이어가 보충 타일을 고르고 있습니다.</p></div></div>`;
-      return `<div class="modal-back"><div class="modal card tile-pick-modal"><span class="entry-kicker">DRAW TILE</span><h2>🧩 보충할 타일을 고르세요</h2><p>주식 거래가 끝났습니다. 랜덤 후보 중 1장을 선택하면 내 손에 추가되고 바로 다음 플레이어 턴으로 넘어갑니다.</p><div class="tile-choice-grid">${state.drawOptions.map(t=>{const pl=playability(t);return `<button class="popup-tile ${pl.ok?'':'temporary'}" data-draw-pick="${t}"><span>${t}</span><small>${pl.ok?'배치 가능':'현재 일시 불가'}</small></button>`}).join('')}</div></div></div>`;
+      if(!canControlCurrent()) return `<div class="modal-back"><div class="modal card tile-pick-modal deck-modal"><h2>⏳ ${escapeHtml(currentPlayer().name)} 타일 뽑기 대기</h2><p>현재 플레이어가 뒤집힌 전체 타일 더미에서 보충 타일을 고르고 있습니다.</p><div class="deck-meta"><span>남은 타일 <b>${state.remainingDeck.length}</b>장</span></div></div></div>`;
+      return `<div class="modal-back"><div class="modal card tile-pick-modal deck-modal"><span class="entry-kicker">DRAW TILE</span><h2>🧩 보충 타일을 뽑으세요</h2><p>남아 있는 타일 전체가 무작위로 섞여 있습니다. 뒷면 하나를 고르면 그때 좌표가 공개됩니다.</p><div class="deck-meta"><span>남은 타일 <b>${state.remainingDeck.length}</b>장</span><span>내 손패 ${state.hands[state.currentPlayer].length}/6장</span></div><div class="face-down-deck">${state.remainingDeck.map((_,i)=>`<button class="tile-back" data-draw-pick-index="${i}" aria-label="뒤집힌 보충 타일 ${i+1}"><i></i><span>◆</span></button>`).join('')}</div></div></div>`;
     }
     if(m.type==='chooseChain') return `<div class="modal-back"><div class="modal card"><h2>🏗️ 새 체인 창립</h2><p>설립할 호텔 체인을 선택하세요. 은행에 주식이 남아 있으면 창립자 주식 1주를 무료로 받습니다.</p><div class="choice-grid">${inactiveChains().map(id=>`<button class="chain-choice" data-found="${id}" style="--c:${chainColor(id)}"><b>${chainName(id)}</b><small>기준가 ${money(CHAIN[id].base)}</small></button>`).join('')}</div></div></div>`;
     if(m.type==='chooseSurvivor') return `<div class="modal-back"><div class="modal card"><h2>🤝 동률 합병</h2><p>가장 큰 체인들이 같은 크기입니다. 합병을 만든 플레이어가 존속 체인을 선택합니다.</p><div class="choice-grid">${m.candidates.map(id=>`<button class="chain-choice" data-survivor="${id}" style="--c:${chainColor(id)}"><b>${chainName(id)}</b><small>${state.merger.sizes[id]}칸</small></button>`).join('')}</div></div></div>`;
@@ -787,8 +823,9 @@
   }
 
   function bindModal() {
-    document.querySelectorAll('[data-setup-pick]').forEach(el=>el.onclick=()=>localDo(()=>chooseSetupTile(el.dataset.setupPick)));
-    document.querySelectorAll('[data-draw-pick]').forEach(el=>el.onclick=()=>{if(canControlCurrent())localDo(()=>chooseDrawTile(el.dataset.drawPick));});
+    document.querySelectorAll('[data-setup-pick-index]').forEach(el=>el.onclick=()=>localDo(()=>chooseSetupTile(el.dataset.setupPickIndex)));
+    document.querySelectorAll('[data-draw-pick-index]').forEach(el=>el.onclick=()=>{if(canControlCurrent())localDo(()=>chooseDrawTile(el.dataset.drawPickIndex));});
+    const csr=document.getElementById('confirmSetupReveal'); if(csr)csr.onclick=()=>localDo(confirmSetupReveal);
     document.querySelectorAll('[data-found]').forEach(el=>el.onclick=()=>{if(canControlCurrent())localDo(()=>foundChain(el.dataset.found));});
     document.querySelectorAll('[data-survivor]').forEach(el=>el.onclick=()=>{if(canControlCurrent())localDo(()=>chooseSurvivor(el.dataset.survivor));});
     document.querySelectorAll('[data-defunct]').forEach(el=>el.onclick=()=>{if(canControlCurrent())localDo(()=>chooseDefunct(el.dataset.defunct));});
@@ -798,12 +835,19 @@
   }
 
   function headerHtml(inGame=false) {
-    return `<header class="header"><div class="brand"><div class="logo"><span>◆</span></div><div><div class="brand-title">ACQUIRE <span class="classic-tag">CLASSIC</span></div><div class="brand-sub">HOTEL EMPIRE · ONLINE BOARD GAME</div></div></div><div class="top-actions"><span class="connection-dot ${net.connected?'online':''}"><i></i>${net.connected?'ONLINE':'CONNECTING'}</span>${net.roomCode?`<span class="badge room-badge">ROOM ${escapeHtml(net.roomCode)}</span>`:''}${inGame?`<span class="badge gold">ROUND ${state.round}</span>`:''}<button type="button" class="header-icon-btn" data-open-info="rules" aria-label="규칙 보기">?</button><button type="button" class="header-icon-btn" data-open-info="settings" aria-label="설정">⚙</button></div></header>`;
+    return `<header class="header"><div class="brand"><div class="logo"><span>◆</span></div><div><div class="brand-title">ACQUIRE <span class="classic-tag">CLASSIC</span></div><div class="brand-sub">HOTEL EMPIRE · ONLINE BOARD GAME</div></div></div><div class="top-actions"><span class="connection-dot ${net.connected?'online':''}"><i></i>${net.connected?'ONLINE':'CONNECTING'}</span>${net.roomCode?`<span class="badge room-badge">ROOM ${escapeHtml(net.roomCode)}</span>`:''}${inGame?`<span class="badge gold">ROUND ${state.round}</span>`:''}<button type="button" class="header-text-btn" data-open-info="prices" aria-label="주가표 보기">📊 주가표</button>${inGame?'<button type="button" class="header-text-btn" data-open-info="history" aria-label="게임 이력 보기">☷ 기록</button>':''}<button type="button" class="header-icon-btn" data-open-info="rules" aria-label="규칙 보기">?</button><button type="button" class="header-icon-btn" data-open-info="settings" aria-label="설정">⚙</button></div></header>`;
   }
 
   function renderInfoModal(){
     if(!ui.modal) return '';
-    if(ui.modal==='rules') return `<div class="modal-back local-modal-back"><div class="modal card info-modal"><button class="modal-close" data-close-info aria-label="닫기">×</button><span class="entry-kicker">HOW TO PLAY</span><h2>게임 규칙</h2><div class="rules-grid"><section><b>① 순서·타일 배치</b><p>게임 시작 시 랜덤 후보에서 순서 타일을 고릅니다. 숫자가 낮고 같은 숫자면 A에 가까운 타일이 먼저입니다. 게임 중에는 내 타일 1장을 같은 좌표에 놓습니다. 인접 타일에 따라 독립 타일, 체인 성장, 신규 체인, 합병이 발생합니다. 안전 체인끼리의 합병처럼 영구적으로 놓을 수 없는 손패 타일은 폐기할 수 있고, 폐기 좌표는 보드에 ✕로 남습니다.</p></section><section><b>② 체인과 안전 체인</b><p>연결된 타일이 2개 이상이면 호텔 체인이 됩니다. 11칸 이상인 체인은 안전 체인이며 다른 안전 체인과 합병되지 않습니다.</p></section><section><b>③ 합병</b><p>더 큰 체인이 존속합니다. 동률이면 합병을 만든 플레이어가 존속 체인을 고릅니다. 소멸 체인의 주주는 보너스를 받고 매도·2:1 교환·보유를 선택합니다.</p></section><section><b>④ 주식 매수·타일 보충</b><p>타일 처리 후 활성 체인의 주식을 합계 최대 3주까지 살 수 있습니다. 매수 확정 뒤 랜덤 후보 팝업에서 보충 타일 1장을 직접 고릅니다.</p></section><section><b>⑤ 게임 종료</b><p>한 체인이 41칸 이상이 되거나 모든 활성 체인이 안전 체인이면 현재 플레이어가 종료를 선언할 수 있습니다.</p></section><section><b>승리 조건</b><p>종료 시 활성 체인의 주주 보너스와 보유 주식을 현금화한 뒤 최종 자산이 가장 많은 플레이어가 승리합니다.</p></section></div><button class="btn primary" data-close-info style="width:100%;margin-top:16px">확인</button></div></div>`;
+    if(ui.modal==='prices') {
+      const rows=[
+        ['$200','2','–','–','$2,000','$1,000'],['$300','3','2','–','$3,000','$1,500'],['$400','4','3','2','$4,000','$2,000'],['$500','5','4','3','$5,000','$2,500'],['$600','6–10','5','4','$6,000','$3,000'],['$700','11–20','6–10','5','$7,000','$3,500'],['$800','21–30','11–20','6–10','$8,000','$4,000'],['$900','31–40','21–30','11–20','$9,000','$4,500'],['$1,000','41 이상','31–40','21–30','$10,000','$5,000'],['$1,100','–','41 이상','31–40','$11,000','$5,500'],['$1,200','–','–','41 이상','$12,000','$6,000']
+      ];
+      return `<div class="modal-back local-modal-back"><div class="modal card info-modal price-modal"><button class="modal-close" data-close-info aria-label="닫기">×</button><span class="entry-kicker">CLASSIC STOCK TABLE</span><h2>📊 클래식 주가표</h2><p>호텔 체인의 현재 크기에 따라 주식 1장 가격과 최대/2대 주주 보너스가 결정됩니다.</p><div class="price-tier-legend"><span><b style="--pc:#e84e5f">●</b> 색슨 · 타워</span><span><b style="--pc:#5b78d4">●</b> 아메리칸 · 페스티벌 · 월드와이드</span><span><b style="--pc:#28a6ca">●</b> 콘티넨탈 · 임페리얼</span></div><div class="price-table-wrap"><table class="price-table"><thead><tr><th>1주 가격</th><th>색슨/타워<br>체인 크기</th><th>중간 3체인<br>체인 크기</th><th>콘티넨탈/임페리얼<br>체인 크기</th><th>최대 주주</th><th>2대 주주</th></tr></thead><tbody>${rows.map(r=>`<tr>${r.map((c,i)=>`<td class="${i===0?'price-cell':i>=4?'bonus-cell':''}">${c}</td>`).join('')}</tr>`).join('')}</tbody></table></div><div class="rule-note">주주 보너스는 주가의 10배 / 5배입니다. 동률 보너스는 클래식 규칙에 따라 분배 후 $100 단위로 올림합니다.</div><button class="btn primary" data-close-info style="width:100%;margin-top:14px">확인</button></div></div>`;
+    }
+    if(ui.modal==='history') return `<div class="modal-back local-modal-back"><div class="modal card info-modal history-modal"><button class="modal-close" data-close-info aria-label="닫기">×</button><span class="entry-kicker">MATCH HISTORY</span><h2>☷ 게임 이력</h2><p>공개 행동만 기록됩니다. 새로 뽑은 비공개 타일 좌표는 다른 플레이어에게 기록되지 않습니다.</p><div class="history-list">${state.logs.map((x,i)=>`<div class="history-row"><span>${state.logs.length-i}</span><p>${escapeHtml(x)}</p></div>`).join('')||'<div class="history-empty">아직 기록이 없습니다.</div>'}</div><button class="btn primary" data-close-info style="width:100%;margin-top:14px">닫기</button></div></div>`;
+    if(ui.modal==='rules') return `<div class="modal-back local-modal-back"><div class="modal card info-modal"><button class="modal-close" data-close-info aria-label="닫기">×</button><span class="entry-kicker">HOW TO PLAY</span><h2>게임 규칙</h2><div class="rules-grid"><section><b>① 순서·타일 배치</b><p>게임 시작 시 뒤집힌 전체 타일 더미에서 1장씩 뽑습니다. 모두 뽑은 뒤 숫자가 낮고 같은 숫자면 A에 가까운 순서로 턴을 정합니다. 게임 중에는 내 타일 1장을 같은 좌표에 놓습니다.</p></section><section><b>② 체인과 안전 체인</b><p>연결된 타일이 2개 이상이면 호텔 체인이 됩니다. 11칸 이상인 체인은 안전 체인이며 다른 안전 체인과 합병되지 않습니다.</p></section><section><b>③ 합병</b><p>더 큰 체인이 존속합니다. 동률이면 합병을 만든 플레이어가 존속 체인을 고릅니다. 소멸 체인의 주주는 보너스를 받고 매도·2:1 교환·보유를 선택합니다.</p></section><section><b>④ 주식 매수·타일 보충</b><p>타일 처리 후 활성 체인의 주식을 합계 최대 3주까지 살 수 있습니다. 매수 확정 뒤 뒤집혀 섞인 전체 남은 타일 더미에서 보충 타일 1장을 직접 뽑습니다.</p></section><section><b>⑤ 영구 불가 타일</b><p>안전 체인끼리 합병시키는 등 영구적으로 놓을 수 없는 손패 타일은 자신의 턴에 폐기할 수 있고, 폐기 좌표는 보드에 ✕로 공개됩니다.</p></section><section><b>승리 조건</b><p>종료 시 활성 체인의 주주 보너스와 보유 주식을 현금화한 뒤 최종 자산이 가장 많은 플레이어가 승리합니다.</p></section></div><button class="btn primary" data-close-info style="width:100%;margin-top:16px">확인</button></div></div>`;
     return `<div class="modal-back local-modal-back"><div class="modal card info-modal"><button class="modal-close" data-close-info aria-label="닫기">×</button><span class="entry-kicker">DISPLAY</span><h2>화면 설정</h2><div class="settings-list"><label><span><b>보드 크기</b><small>PC에서 보드 칸 크기를 조절합니다.</small></span><select id="boardScaleSetting"><option value="90" ${ui.settings.boardScale===90?'selected':''}>90%</option><option value="100" ${ui.settings.boardScale===100?'selected':''}>100%</option><option value="110" ${ui.settings.boardScale===110?'selected':''}>110%</option></select></label><label><span><b>진행 도움말</b><small>내 타일 아래 단계 설명을 표시합니다.</small></span><input id="hintSetting" type="checkbox" ${ui.settings.showHints?'checked':''}></label><label><span><b>애니메이션 줄이기</b><small>게임 시작과 결과 화면의 움직임을 줄입니다.</small></span><input id="motionSetting" type="checkbox" ${ui.settings.reducedMotion?'checked':''}></label></div><button class="btn primary" data-save-settings style="width:100%;margin-top:16px">설정 저장</button></div></div>`;
   }
 
@@ -821,6 +865,20 @@
     const p=playability(tile);
     if(p.kind!=='permanent') return '';
     return `<div class="modal-back local-placement-back"><div class="modal card placement-confirm discard-confirm"><span class="entry-kicker">PERMANENT DISCARD</span><h2>🗑️ ${tile} 타일을 폐기할까요?</h2><p>${escapeHtml(p.reason)}<br>폐기하면 이번 턴의 타일 행동이 끝나고 <b>주식 매수 단계</b>로 이동합니다. 폐기된 ${tile} 좌표는 보드에 ✕ 표시로 공개됩니다.</p><div class="placement-actions"><button class="btn" id="cancelDiscard">취소</button><button class="btn danger" id="confirmDiscard">폐기 확정</button></div></div></div>`;
+  }
+
+  function modalUtilityHtml(){
+    if(state.screen!=='game' || (!state.modal && !ui.pendingPlacementTile && !ui.pendingDiscardTile)) return '';
+    return `<button type="button" class="modal-price-shortcut" data-open-info="prices">📊 주가표</button>`;
+  }
+
+  function bonusEffectHtml(){
+    const e=ui.bonusEffect; if(!e) return '';
+    return `<div class="bonus-effect" aria-live="polite"><div class="bonus-card" style="--bc:${chainColor(e.chainId)}"><span>SHAREHOLDER BONUS</span><h3>💰 ${escapeHtml(chainName(e.chainId))} 주주 보너스!</h3>${e.payouts.map(p=>`<div class="bonus-payout"><b>${escapeHtml(p.name)}</b><span>${escapeHtml(p.label)}</span><strong>+${money(p.amount)}</strong></div>`).join('')}</div></div>`;
+  }
+  function drawRevealHtml(){
+    if(!ui.drawReveal) return '';
+    return `<div class="draw-reveal" aria-live="polite"><div class="reveal-tile"><small>내가 뽑은 타일</small><strong>${escapeHtml(ui.drawReveal.tile)}</strong><span>손패에 추가되었습니다</span></div></div>`;
   }
 
   function startIntroHtml(){
@@ -841,10 +899,10 @@
   }
 
   const _renderLobby=renderLobby, _renderGame=renderGame;
-  renderLobby=function(){ _renderLobby(); app.insertAdjacentHTML('beforeend', renderInfoModal()+startIntroHtml()); bindGlobalUi(); };
+  renderLobby=function(){ _renderLobby(); app.insertAdjacentHTML('beforeend', modalUtilityHtml()+renderInfoModal()+startIntroHtml()+bonusEffectHtml()+drawRevealHtml()); bindGlobalUi(); };
   renderGame=function(){
     _renderGame();
-    app.insertAdjacentHTML('beforeend', renderInfoModal()+startIntroHtml()+localPlacementModalHtml()+localDiscardModalHtml());
+    app.insertAdjacentHTML('beforeend', modalUtilityHtml()+renderInfoModal()+startIntroHtml()+localPlacementModalHtml()+localDiscardModalHtml()+bonusEffectHtml()+drawRevealHtml());
     bindGlobalUi();
     const ok=document.getElementById('confirmPlacement');
     if(ok) ok.onclick=()=>{ const tile=ui.pendingPlacementTile; ui.pendingPlacementTile=null; localDo(()=>placeTile(tile)); };
