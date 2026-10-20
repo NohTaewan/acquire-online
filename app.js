@@ -53,6 +53,8 @@
     roomCode: localStorage.getItem('acquireRoomCode') || '',
     hostId: null,
     members: [],
+    automationAuthorityId: null,
+    pendingDepartures: [],
     connected: false,
     name: localStorage.getItem('acquirePlayerName') || '',
   };
@@ -69,6 +71,8 @@
     lobbyTurnLimitSeconds: 60,
     lastTimedOutToken: null,
     timeoutHandling: false,
+    departureHandling: false,
+    autoDisconnectedKey: '',
     settings: (() => {
       try { return Object.assign({boardScale:100,showHints:true,reducedMotion:false}, JSON.parse(localStorage.getItem('acquireUiSettings')||'{}')); }
       catch { return {boardScale:100,showHints:true,reducedMotion:false}; }
@@ -105,9 +109,12 @@
       }
       if(msg.type==='room') {
         net.roomCode=msg.roomCode || ''; net.hostId=msg.hostId || null; net.members=msg.members || [];
+        net.automationAuthorityId=msg.automationAuthorityId || null;
+        net.pendingDepartures=msg.pendingDepartures || [];
         if(net.roomCode) localStorage.setItem('acquireRoomCode',net.roomCode); else localStorage.removeItem('acquireRoomCode');
         if(msg.gameState) applyRemoteState(msg.gameState);
         else if(state.screen!=='game') render();
+        setTimeout(processNetworkRecovery,0);
       }
       if(msg.type==='game') applyRemoteState(msg.gameState);
       if(msg.type==='error') toast(msg.message || '네트워크 오류가 발생했습니다.');
@@ -124,7 +131,7 @@
     copy.toast='';
     return copy;
   }
-  function syncState() { if(net.roomCode && state.screen==='game') sendNet({type:'sync', roomCode:net.roomCode, gameState:snapshotState()}); }
+  function syncState() { if(net.roomCode) sendNet({type:'sync', roomCode:net.roomCode, gameState:snapshotState()}); }
   function applyRemoteState(remote) {
     if(!remote) return;
     const wasLobby=state.screen!=='game';
@@ -150,6 +157,60 @@
   function myPlayerIndex() { return state.players.findIndex(p=>p.clientId===net.clientId); }
   function canControlCurrent() { return state.screen==='game' && state.players[state.currentPlayer]?.clientId===net.clientId; }
   function isHost() { return net.hostId===net.clientId; }
+  function memberStatus(clientId) { return net.members.find(m=>m.clientId===clientId) || null; }
+  function isAutomationAuthority() { return !!net.clientId && net.automationAuthorityId===net.clientId; }
+  function disconnectSeconds(member) {
+    if(!member?.disconnectDeadline) return 0;
+    return Math.max(0,Math.ceil((Number(member.disconnectDeadline)-Date.now())/1000));
+  }
+  function isAutoMember(clientId) { return !!memberStatus(clientId)?.autoPlay; }
+
+  function handleSetupDeparture(clientId,name,reason='disconnect') {
+    if(!['SETUP_PICK','SETUP_REVEAL'].includes(state.phase)) return false;
+    const idx=state.players.findIndex(p=>p.clientId===clientId);
+    if(idx<0) return false;
+    const departed=state.players[idx];
+    const picked=state.setupPicks?.[clientId];
+    if(picked) {
+      delete state.setupPicks[clientId];
+      state.remainingDeck.push(picked);
+      state.remainingDeck=shuffle(state.remainingDeck);
+    }
+    state.players.splice(idx,1);
+    if(Array.isArray(state.hands) && idx<state.hands.length) state.hands.splice(idx,1);
+    if(idx<state.setupPickerIndex) state.setupPickerIndex--;
+    state.setupPickerIndex=Math.max(0,Math.min(state.setupPickerIndex,state.players.length));
+    log(`${name||departed.name}: ${reason==='left'?'게임에서 나감':'30초 내 재접속 실패'} · 순서 결정에서 제외`);
+    return true;
+  }
+
+  function settleSetupAfterDepartures() {
+    if(state.players.length<2) {
+      resetGameState();
+      state.screen='lobby';
+      state.toast='남은 플레이어가 1명이라 게임 시작이 취소되었습니다.';
+      return;
+    }
+    if(state.players.every(p=>state.setupPicks[p.clientId])) {
+      finalizeSetupOrder();
+      return;
+    }
+    state.modal={type:'setupPick'};
+  }
+
+  function processNetworkRecovery() {
+    if(ui.departureHandling || !isAutomationAuthority() || !net.pendingDepartures?.length) return;
+    if(!['SETUP_PICK','SETUP_REVEAL'].includes(state.phase)) return;
+    const pending=net.pendingDepartures.filter(x=>state.players.some(p=>p.clientId===x.clientId));
+    if(!pending.length) return;
+    ui.departureHandling=true;
+    localDo(()=>{
+      let changed=false;
+      pending.forEach(x=>{ changed=handleSetupDeparture(x.clientId,x.name,x.reason) || changed; });
+      if(changed) settleSetupAfterDepartures();
+    });
+    ui.departureHandling=false;
+  }
 
   function randomCode() { return String(Math.floor(100000 + Math.random()*900000)); }
   function shuffle(arr) {
@@ -164,6 +225,19 @@
   function escapeHtml(str) { return String(str).replace(/[&<>'"]/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[ch])); }
   function chainName(id) { return CHAIN[id]?.name || id; }
   function chainColor(id) { return CHAIN[id]?.color || '#8fa9c2'; }
+
+  function chainMarkHtml(id) {
+    if (id === 'Tower') {
+      return `<svg class="tower-emblem" viewBox="0 0 48 48" aria-hidden="true" focusable="false">
+        <path class="tower-emblem-spire" d="M24 3l2.7 7.4h-5.4L24 3Z"/>
+        <path class="tower-emblem-crown" d="M18 10h12l2 6h-3v4h5v23H14V20h5v-4h-3l2-6Z"/>
+        <path class="tower-emblem-core" d="M20 18h8v25h-8z"/>
+        <path class="tower-emblem-window" d="M17 24h3v4h-3zm11 0h3v4h-3zm-11 7h3v4h-3zm11 0h3v4h-3zm5-7h-1v12h1zM15 24h1v12h-1z"/>
+        <path class="tower-emblem-door" d="M22 36h4v7h-4z"/>
+      </svg>`;
+    }
+    return escapeHtml(CHAIN[id]?.mark || String(id||'').slice(0,1));
+  }
   function log(msg) { state.logs.unshift(`[R${state.round||1}] ${msg}`); state.logs = state.logs.slice(0,80); }
   function toast(msg) {
     state.toast = msg; render();
@@ -308,6 +382,7 @@
     state.modal=null; state.merger=null; state.logs=[]; state.results=null; state.setupSeeds=[];
     state.setupOptions={}; state.setupPicks={}; state.setupPickerIndex=0; state.drawOptions=[]; state.discardedTiles={}; state.lastBonusEvent=null;
     state.turnLimitSeconds=Number(ui.lobbyTurnLimitSeconds)===0 ? 0 : (Number(ui.lobbyTurnLimitSeconds)||60); state.turnDeadline=0; state.turnToken=0; ui.lastTimedOutToken=null; ui.timeoutHandling=false;
+    ui.departureHandling=false; ui.autoDisconnectedKey='';
     ui.localSelectedTile=null; ui.pendingPlacementTile=null; ui.pendingDiscardTile=null;
   }
 
@@ -596,6 +671,9 @@
   }
 
   function turnTimerText() {
+    const cp=currentPlayer?.();
+    const m=cp?memberStatus(cp.clientId):null;
+    if(m && !m.connected && !m.autoPlay && m.disconnectDeadline) return '일시정지';
     const left=turnSecondsLeft();
     if(left===null) return '무제한';
     return `${Math.floor(left/60)}:${String(left%60).padStart(2,'0')}`;
@@ -605,34 +683,34 @@
     return arr?.length ? arr[Math.floor(Math.random()*arr.length)] : null;
   }
 
-  function autoResolvePlacementChoices() {
+  function autoResolvePlacementChoices(reason='시간 초과') {
     let guard=0;
     while(guard++<100) {
       if(state.phase==='CHOOSE_CHAIN') {
         const id=randomChoice(inactiveChains());
         if(!id) break;
-        log(`${currentPlayer().name}: 시간 초과 · ${chainName(id)} 자동 창립`);
+        log(`${currentPlayer().name}: ${reason} · ${chainName(id)} 자동 창립`);
         foundChain(id);
         continue;
       }
       if(state.phase==='CHOOSE_SURVIVOR') {
         const id=randomChoice(state.modal?.candidates||[]);
         if(!id) break;
-        log(`${currentPlayer().name}: 시간 초과 · ${chainName(id)} 자동 존속 선택`);
+        log(`${currentPlayer().name}: ${reason} · ${chainName(id)} 자동 존속 선택`);
         chooseSurvivor(id);
         continue;
       }
       if(state.phase==='CHOOSE_DEFUNCT') {
         const id=randomChoice(state.modal?.candidates||[]);
         if(!id) break;
-        log(`${currentPlayer().name}: 시간 초과 · ${chainName(id)} 자동 처리 순서 선택`);
+        log(`${currentPlayer().name}: ${reason} · ${chainName(id)} 자동 처리 순서 선택`);
         chooseDefunct(id);
         continue;
       }
       if(state.phase==='MERGER_DECISION' && state.modal?.type==='mergerDecision') {
         const p=state.players[state.modal.playerIndex];
         state.modal.sell=0; state.modal.tradePairs=0;
-        log(`${p.name}: 시간 초과 · 합병 주식 전량 보유 자동 선택`);
+        log(`${p.name}: ${reason} · 합병 주식 전량 보유 자동 선택`);
         confirmMergerDecision();
         continue;
       }
@@ -702,8 +780,13 @@
   function tickTurnTimer() {
     if(Number(state.turnLimitSeconds)===0) return;
     if(state.screen!=='game' || !state.turnDeadline || ['SETUP_PICK','SETUP_REVEAL','GAME_OVER'].includes(state.phase)) return;
-    const left=turnSecondsLeft();
+    const cp=currentPlayer(); const cm=cp?memberStatus(cp.clientId):null;
     const el=document.getElementById('turnTimer');
+    if(cm && !cm.connected && !cm.autoPlay && cm.disconnectDeadline) {
+      if(el) { el.textContent='일시정지'; el.closest('.turn-timer')?.classList.remove('urgent'); }
+      return;
+    }
+    const left=turnSecondsLeft();
     if(el) {
       el.textContent=`${Math.floor(left/60)}:${String(left%60).padStart(2,'0')}`;
       el.closest('.turn-timer')?.classList.toggle('urgent',left<=10);
@@ -712,6 +795,97 @@
       ui.lastTimedOutToken=state.turnToken;
       localDo(handleTurnTimeout);
     }
+  }
+
+  function autoDisconnectedMergerOwner() {
+    if(state.phase!=='MERGER_DECISION' || state.modal?.type!=='mergerDecision') return false;
+    const owner=state.players[state.modal.playerIndex];
+    if(!owner || !isAutoMember(owner.clientId)) return false;
+    state.modal.sell=0; state.modal.tradePairs=0;
+    log(`${owner.name}: 이탈 자동 진행 · 합병 주식 전량 보유`);
+    confirmMergerDecision();
+    return true;
+  }
+
+  function autoDisconnectedCurrentTurn() {
+    const cp=currentPlayer();
+    if(!cp || !isAutoMember(cp.clientId) || ['SETUP_PICK','SETUP_REVEAL','GAME_OVER'].includes(state.phase)) return false;
+    let changed=false, guard=0;
+    while(guard++<120 && currentPlayer()?.clientId===cp.clientId && state.phase!=='GAME_OVER') {
+      if(state.phase==='MERGER_DECISION') {
+        const owner=state.players[state.modal?.playerIndex];
+        if(owner && isAutoMember(owner.clientId)) {
+          state.modal.sell=0; state.modal.tradePairs=0;
+          log(`${owner.name}: 이탈 자동 진행 · 합병 주식 전량 보유`);
+          confirmMergerDecision(); changed=true; continue;
+        }
+        break;
+      }
+      if(state.phase==='PLACE_TILE') {
+        const hand=[...(state.hands[state.currentPlayer]||[])];
+        const playable=hand.filter(t=>playability(t).ok);
+        const permanent=hand.filter(t=>playability(t).kind==='permanent');
+        if(playable.length) {
+          const tile=randomChoice(playable);
+          log(`${cp.name}: 이탈 자동 진행 · 손패에서 ${tile} 자동 배치`);
+          placeTile(tile); changed=true; continue;
+        }
+        if(permanent.length) {
+          const tile=randomChoice(permanent);
+          log(`${cp.name}: 이탈 자동 진행 · 영구 불가 ${tile} 자동 폐기`);
+          discardPermanentTile(tile); changed=true; continue;
+        }
+        log(`${cp.name}: 이탈 자동 진행 · 배치 가능한 타일이 없어 타일 단계 건너뜀`);
+        state.phase='BUY_STOCK'; state.modal=null; state.pendingPlacement=null;
+        state.pendingBuy=Object.fromEntries(HOTEL_CHAINS.map(h=>[h.id,0])); changed=true; continue;
+      }
+      if(['CHOOSE_CHAIN','CHOOSE_SURVIVOR','CHOOSE_DEFUNCT'].includes(state.phase)) {
+        const before=state.phase;
+        autoResolvePlacementChoices('이탈 자동 진행');
+        changed=changed || state.phase!==before;
+        if(state.phase===before) break;
+        continue;
+      }
+      if(state.phase==='BUY_STOCK') {
+        state.pendingBuy=Object.fromEntries(HOTEL_CHAINS.map(h=>[h.id,0]));
+        log(`${cp.name}: 이탈 자동 진행 · 주식 매수 없이 진행`);
+        autoDrawAndFinishTurn('이탈 자동 진행'); changed=true; break;
+      }
+      if(state.phase==='DRAW_TILE') {
+        autoDrawAndFinishTurn('이탈 자동 진행'); changed=true; break;
+      }
+      break;
+    }
+    return changed;
+  }
+
+  function tickNetworkRecovery() {
+    document.querySelectorAll('[data-disconnect-deadline]').forEach(el=>{
+      const deadline=Number(el.dataset.disconnectDeadline)||0;
+      const left=Math.max(0,Math.ceil((deadline-Date.now())/1000));
+      el.textContent=`${left}초`;
+    });
+    processNetworkRecovery();
+    if(!isAutomationAuthority() || state.screen!=='game') return;
+    if(state.phase==='MERGER_DECISION') {
+      const owner=state.players[state.modal?.playerIndex];
+      if(owner && isAutoMember(owner.clientId)) {
+        const key=`md:${state.turnToken}:${owner.clientId}:${state.modal.defunct}:${state.modal.total}`;
+        if(ui.autoDisconnectedKey!==key) {
+          ui.autoDisconnectedKey=key;
+          localDo(autoDisconnectedMergerOwner);
+        }
+        return;
+      }
+    }
+    const cp=currentPlayer();
+    if(cp && isAutoMember(cp.clientId)) {
+      const key=`turn:${state.turnToken}:${cp.clientId}:${state.phase}:${state.modal?.type||''}:${state.modal?.playerIndex??''}`;
+      if(ui.autoDisconnectedKey!==key) {
+        ui.autoDisconnectedKey=key;
+        localDo(autoDisconnectedCurrentTurn);
+      }
+    } else ui.autoDisconnectedKey='';
   }
 
   function currentPlayer() { return state.players[state.currentPlayer]; }
@@ -831,7 +1005,7 @@
       <span class="coord">${tile}</span>
       ${target?`<span class="target-label">${pl.ok?'배치':pl.kind==='permanent'?'폐기 가능':'보유'}</span>`:''}
       ${discarded?`<span class="discard-mark">×</span><span class="discard-label">폐기</span>`:''}
-      ${placed?(v.chain?`<span class="chain-tile-mark" style="--c:${c}">${CHAIN[v.chain].mark}</span><span class="chain-letter">${chainName(v.chain).slice(0,1)}</span>`:'<span class="hotel-icon">▫️</span>'):''}
+      ${placed?(v.chain?`<span class="chain-tile-mark" style="--c:${c}">${chainMarkHtml(v.chain)}</span><span class="chain-letter">${chainName(v.chain).slice(0,1)}</span>`:'<span class="hotel-icon">▫️</span>'):''}
     </button>`;
   }
 
@@ -880,18 +1054,35 @@
     const startBtn=document.getElementById('startGame'); if(startBtn) startBtn.onclick=startGame;
   }
 
+  function playerConnectionHtml(p) {
+    const m=memberStatus(p.clientId);
+    if(!m) return '<span class="presence-chip unknown">상태 확인 중</span>';
+    if(m.autoPlay) return `<span class="presence-chip auto">${m.left?'나감 · ':''}자동 진행</span>`;
+    if(m.connected) return '<span class="presence-chip online">접속</span>';
+    if(m.disconnectDeadline) return `<span class="presence-chip reconnect">재접속 <b data-disconnect-deadline="${Number(m.disconnectDeadline)}">${disconnectSeconds(m)}초</b></span>`;
+    return '<span class="presence-chip offline">연결 끊김</span>';
+  }
+
+  function currentDisconnectNoticeHtml() {
+    const cp=currentPlayer(); if(!cp) return '';
+    const m=memberStatus(cp.clientId); if(!m || m.connected) return '';
+    if(m.autoPlay) return `<div class="disconnect-notice auto"><b>🤖 ${escapeHtml(cp.name)} 자동 진행</b><span>${m.left?'게임에서 나가':'재접속 유예가 끝나'} 서버 대리 진행 상태입니다.</span></div>`;
+    if(m.disconnectDeadline) return `<div class="disconnect-notice"><b>📡 ${escapeHtml(cp.name)} 연결 끊김</b><span><strong data-disconnect-deadline="${Number(m.disconnectDeadline)}">${disconnectSeconds(m)}초</strong> 안에 돌아오면 그대로 이어서 진행합니다. 이후 자동 진행됩니다.</span></div>`;
+    return '';
+  }
+
   function renderGame() {
     const cp=currentPlayer(); const mine=myPlayerIndex(); const hand=(mine>=0?state.hands[mine]:[])||[]; const myTurn=canControlCurrent(); const buyCount=pendingBuyCount(); const buyCost=pendingBuyCost();
     app.innerHTML=`<div class="app-shell">${headerHtml(true)}
       <div class="game-layout">
         <aside class="card side-panel"><div class="section-title"><span>👑 플레이어</span><span class="badge">${state.players.length}명</span></div><div class="players-grid-mobile">
-          ${state.players.map((p,i)=>`<div class="player-card ${i===state.currentPlayer?'active':''} ${p.clientId===net.clientId?'me':''}" style="--player:${p.profileColor||seatColor(i)}"><div class="player-head"><span class="player-avatar">${escapeHtml(p.name.slice(0,1).toUpperCase())}</span><strong>${escapeHtml(p.name)}${i===state.currentPlayer?' ◀':''}</strong><span class="badge">${i+1}</span></div><div class="player-meta"><span>타일 ${state.hands[i].length}장</span><span class="cash">${money(p.cash)}</span></div><div class="stock-tags">${playerStockTags(p)}</div></div>`).join('')}
+          ${state.players.map((p,i)=>`<div class="player-card ${i===state.currentPlayer?'active':''} ${p.clientId===net.clientId?'me':''} ${memberStatus(p.clientId)?.autoPlay?'auto-player':''}" style="--player:${p.profileColor||seatColor(i)}"><div class="player-head"><span class="player-avatar">${escapeHtml(p.name.slice(0,1).toUpperCase())}</span><strong>${escapeHtml(p.name)}${i===state.currentPlayer?' ◀':''}</strong><span class="badge">${i+1}</span></div><div class="player-presence">${playerConnectionHtml(p)}</div><div class="player-meta"><span>타일 ${state.hands[i].length}장</span><span class="cash">${money(p.cash)}</span></div><div class="stock-tags">${playerStockTags(p)}</div></div>`).join('')}
         </div></aside>
 
         <main class="center-stack">
-          <section class="card turn-banner"><div><div class="big">${escapeHtml(cp.name)}님의 턴</div><div class="small">${phaseLabel()}</div></div><div class="status-row"><span class="turn-timer ${Number(state.turnLimitSeconds)===0?'unlimited':''}">⏱ <b id="turnTimer">${turnTimerText()}</b></span><span class="badge green">LIVE MATCH</span><span class="badge gold">ROUND ${state.round}</span>${canEndGame()?'<span class="badge danger-badge">종료 가능</span>':''}</div></section>
+          <section class="card turn-banner"><div><div class="big">${escapeHtml(cp.name)}님의 턴</div><div class="small">${phaseLabel()}</div></div><div class="status-row"><span class="turn-timer ${Number(state.turnLimitSeconds)===0?'unlimited':''}">⏱ <b id="turnTimer">${turnTimerText()}</b></span><span class="badge green">LIVE MATCH</span><span class="badge gold">ROUND ${state.round}</span>${canEndGame()?'<span class="badge danger-badge">종료 가능</span>':''}</div>${currentDisconnectNoticeHtml()}</section>
           <section class="card board-card"><div class="board-head"><h2>◆ 도시 보드 <span style="font-size:11px;color:var(--muted);font-weight:700">CITY GRID</span></h2><div class="status-row"><span class="badge">108 ZONES · 12×9</span><span class="badge">배치 ${Object.keys(state.board).length}</span><span class="badge discard-badge">폐기 ${Object.keys(state.discardedTiles||{}).length}</span></div></div><div class="board-wrap"><div class="board">${ALL_TILES.map(tileCell).join('')}</div></div>
-            <div class="legend"><span>▫️ 독립 타일</span><span>✕ 폐기된 타일</span>${HOTEL_CHAINS.map(h=>`<span class="legend-chain"><b class="mini-chain-logo" style="--hc:${h.color}">${h.mark}</b> ${h.name}</span>`).join('')}</div>
+            <div class="legend"><span>▫️ 독립 타일</span><span>✕ 폐기된 타일</span>${HOTEL_CHAINS.map(h=>`<span class="legend-chain"><b class="mini-chain-logo" style="--hc:${h.color}">${chainMarkHtml(h.id)}</b> ${h.name}</span>`).join('')}</div>
           </section>
           <section class="card hand-card"><div class="section-title"><span>🧩 내 타일${mine>=0?' · '+escapeHtml(state.players[mine].name):''}</span><span class="badge gold">${hand.length}장</span></div><div class="hand">
             ${hand.map(t=>{const pl=playability(t);const canDiscard=myTurn&&state.phase==='PLACE_TILE'&&pl.kind==='permanent';const disabled=!myTurn||state.phase!=='PLACE_TILE'||(pl.kind==='temporary');return `<button class="hand-tile ${ui.localSelectedTile===t?'selected':''} ${!pl.ok?pl.kind:''} ${canDiscard?'discardable':''}" data-hand="${t}" ${disabled?'disabled':''}>${t}<div class="tile-state">${pl.ok?'선택':pl.kind==='permanent'?'폐기 가능':'일시 불가'}</div></button>`}).join('')}
@@ -944,7 +1135,7 @@
 
   function hotelMarketHtml(h) {
     const size=chainSize(h.id); const active=size>=2; const safe=isSafe(h.id); const n=state.pendingBuy[h.id];
-    return `<div class="hotel ${active?'active-chain':''}" style="--hc:${h.color}"><div class="chain-logo">${h.mark}</div><div><div class="hotel-name"><span style="color:${h.color}">●</span> ${h.name}</div><div class="hotel-sub">${active?`${size}칸${safe?' · SAFE':''}`:'미설립'} · 남은 주식 ${state.chainBank[h.id]} / 25</div><div class="hotel-sub">${active?`1주 ${money(stockPrice(h.id))}`:'거래 불가'}</div></div><div class="stock-step"><button data-buy-minus="${h.id}" ${state.phase!=='BUY_STOCK'||!active||n<=0?'disabled':''}>−</button><b>${n}</b><button data-buy-plus="${h.id}" ${state.phase!=='BUY_STOCK'||!active||state.chainBank[h.id]<=n?'disabled':''}>＋</button></div></div>`;
+    return `<div class="hotel ${active?'active-chain':''}" style="--hc:${h.color}"><div class="chain-logo ${h.id==='Tower'?'tower-chain-logo':''}">${chainMarkHtml(h.id)}</div><div><div class="hotel-name"><span style="color:${h.color}">●</span> ${h.name}</div><div class="hotel-sub">${active?`${size}칸${safe?' · SAFE':''}`:'미설립'} · 남은 주식 ${state.chainBank[h.id]} / 25</div><div class="hotel-sub">${active?`1주 ${money(stockPrice(h.id))}`:'거래 불가'}</div></div><div class="stock-step"><button data-buy-minus="${h.id}" ${state.phase!=='BUY_STOCK'||!active||n<=0?'disabled':''}>−</button><b>${n}</b><button data-buy-plus="${h.id}" ${state.phase!=='BUY_STOCK'||!active||state.chainBank[h.id]<=n?'disabled':''}>＋</button></div></div>`;
   }
 
   function renderModal() {
@@ -953,10 +1144,14 @@
       const mine=state.players.find(p=>p.clientId===net.clientId);
       const picked=mine?state.setupPicks[mine.clientId]:null;
       const picker=state.players[state.setupPickerIndex];
+      const pickerMember=picker?memberStatus(picker.clientId):null;
       const done=Object.keys(state.setupPicks||{}).length;
       if(!mine) return `<div class="modal-back"><div class="modal card"><h2>🎲 순서 결정 중</h2><p>플레이어들의 타일 뽑기를 기다리고 있습니다.</p></div></div>`;
       if(picked) return `<div class="modal-back"><div class="modal card tile-pick-modal deck-modal"><span class="entry-kicker">TURN ORDER</span><h2>✅ 내가 뽑은 타일: ${escapeHtml(picked)}</h2><p>${picker?`${escapeHtml(picker.name)}님이 타일을 고르는 중입니다.`:'모든 선택이 끝났습니다.'} (${done}/${state.players.length})</p><div class="picked-order-hint">모두 뽑은 뒤 한꺼번에 공개하고 순서를 정합니다.</div></div></div>`;
-      if(!picker || picker.clientId!==net.clientId) return `<div class="modal-back"><div class="modal card tile-pick-modal deck-modal"><span class="entry-kicker">TURN ORDER</span><h2>⏳ ${escapeHtml(picker?.name||'다른 플레이어')} 타일 뽑기</h2><p>전체 타일은 뒤집혀 있으며 현재 플레이어만 한 장을 고를 수 있습니다. (${done}/${state.players.length})</p></div></div>`;
+      if(!picker || picker.clientId!==net.clientId) {
+        const reconnecting=pickerMember && !pickerMember.connected && !pickerMember.autoPlay && pickerMember.disconnectDeadline;
+        return `<div class="modal-back"><div class="modal card tile-pick-modal deck-modal"><span class="entry-kicker">TURN ORDER</span><h2>${reconnecting?'📡':'⏳'} ${escapeHtml(picker?.name||'다른 플레이어')} ${reconnecting?'재접속 대기':'타일 뽑기'}</h2><p>${reconnecting?`연결이 끊겼습니다. <b data-disconnect-deadline="${Number(pickerMember.disconnectDeadline)}">${disconnectSeconds(pickerMember)}초</b> 안에 돌아오지 않으면 순서 결정에서 제외됩니다.`:`전체 타일은 뒤집혀 있으며 현재 플레이어만 한 장을 고를 수 있습니다. (${done}/${state.players.length})`}</p></div></div>`;
+      }
       return `<div class="modal-back"><div class="modal card tile-pick-modal deck-modal"><span class="entry-kicker">TURN ORDER</span><h2>🎲 뒤집힌 타일 1장을 고르세요</h2><p>전체 타일 더미가 무작위로 섞여 있습니다. 좌표는 고르기 전까지 보이지 않습니다.</p><div class="deck-meta"><span>남은 타일 <b>${state.remainingDeck.length}</b>장</span><span>선택 ${done+1}/${state.players.length}</span></div><div class="face-down-deck">${state.remainingDeck.map((_,i)=>`<button class="tile-back" data-setup-pick-index="${i}" aria-label="뒤집힌 순서 타일 ${i+1}"><i></i><span>◆</span></button>`).join('')}</div><div class="picked-order-hint">모두 선택 후 공개 · 우선순위 1A → 1B → … → 12I</div></div></div>`;
     }
     if(m.type==='setupReveal') {
@@ -1084,4 +1279,5 @@
   render();
   connectNetwork();
   setInterval(tickTurnTimer,250);
+  setInterval(tickNetworkRecovery,250);
 })();

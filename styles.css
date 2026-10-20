@@ -321,3 +321,37 @@ body::before{content:"";position:fixed;inset:0;pointer-events:none;opacity:.16;b
 /* v12: unlimited turn timer */
 .turn-timer.unlimited{white-space:nowrap}
 .turn-timer.unlimited b{letter-spacing:-.02em}
+
+
+/* v13 · refined Tower identity + polished lobby skyline */
+.tower-emblem{width:82%;height:82%;display:block;overflow:visible;filter:drop-shadow(0 1px 1px rgba(0,0,0,.35))}
+.tower-emblem-spire{fill:#fff1b5;stroke:rgba(75,48,0,.45);stroke-width:.7}
+.tower-emblem-crown{fill:#f6d36b;stroke:#fff0ad;stroke-width:.8;stroke-linejoin:round}
+.tower-emblem-core{fill:#9a6815;opacity:.72}
+.tower-emblem-window{fill:#fff3bf;opacity:.95}
+.tower-emblem-door{fill:#5b3b0c;opacity:.9}
+.tower-chain-logo{background:radial-gradient(circle at 35% 24%,#806019 0 10%,#4e3510 36%,#221809 100%)!important;border-color:#dcb850!important;box-shadow:inset 0 1px 0 rgba(255,245,184,.35),0 0 0 1px rgba(220,184,80,.08)!important}
+.chain-tile-mark .tower-emblem{width:94%;height:94%}
+.mini-chain-logo .tower-emblem{width:94%;height:94%}
+
+/* Give the landing skyline a more architectural, art-deco silhouette. */
+.hero-mark .tower{border-color:#426d89;background:linear-gradient(180deg,rgba(75,158,202,.52),rgba(8,28,43,.94));box-shadow:inset 0 0 0 4px rgba(4,19,30,.42),0 12px 30px rgba(0,0,0,.24);clip-path:polygon(12% 10%,35% 10%,35% 3%,65% 3%,65% 10%,88% 10%,100% 100%,0 100%)}
+.hero-mark .tower::after{inset:10px 8px 8px;background:repeating-linear-gradient(to bottom,rgba(175,225,249,.56) 0 3px,transparent 3px 10px);opacity:.9}
+.hero-mark .t1{height:112px}.hero-mark .t2{height:168px;width:58px}.hero-mark .t3{height:90px}.hero-mark .t4{height:136px;width:42px}
+.hero-mark .t2::before{left:50%;top:-23px;width:2px;height:24px;background:linear-gradient(#d6c06a,#6bb7df);box-shadow:0 0 8px rgba(230,203,103,.4)}
+.hero-mark::after{content:"";position:absolute;left:0;right:0;bottom:21px;height:1px;background:linear-gradient(90deg,transparent,rgba(100,181,222,.35),transparent)}
+
+/* v14 · disconnect recovery and server-side auto progression */
+.turn-banner{flex-wrap:wrap}
+.player-presence{display:flex;align-items:center;margin:6px 0 2px}
+.presence-chip{display:inline-flex;align-items:center;gap:4px;min-height:20px;padding:3px 7px;border-radius:999px;border:1px solid #29485e;background:#0a2133;color:#8faec1;font-size:9px;font-weight:900;line-height:1}
+.presence-chip.online{border-color:#285d4b;background:#0c2a22;color:#7be1ad}
+.presence-chip.reconnect{border-color:#75632c;background:#2b2512;color:#f0d47c}
+.presence-chip.auto{border-color:#6d4c7a;background:#25162c;color:#d6a9ef}
+.presence-chip.offline,.presence-chip.unknown{border-color:#5b4a50;background:#21171b;color:#b8969f}
+.player-card.auto-player{opacity:.88;border-style:dashed!important}
+.disconnect-notice{flex:1 0 100%;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:9px 11px;border:1px solid rgba(238,197,91,.38);border-radius:10px;background:rgba(76,58,15,.42);color:#d9c884;font-size:10px}
+.disconnect-notice b{color:#ffe8a2;font-size:11px}.disconnect-notice span{color:#c8b982}.disconnect-notice strong{color:#fff0ae;font-size:12px}
+.disconnect-notice.auto{border-color:rgba(183,126,212,.4);background:rgba(61,30,72,.38)}
+.disconnect-notice.auto b{color:#e2b8f5}.disconnect-notice.auto span{color:#c9a9d5}
+@media(max-width:700px){.disconnect-notice{align-items:flex-start;flex-direction:column;gap:4px}.player-presence{margin-top:5px}.presence-chip{font-size:8px}}
