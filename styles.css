@@ -324,6 +324,8 @@ body::before{content:"";position:fixed;inset:0;pointer-events:none;opacity:.16;b
 
 
 /* v13 · refined Tower identity + polished lobby skyline */
+.chain-emblem{width:82%;height:82%;display:block;overflow:visible;filter:drop-shadow(0 1px 1px rgba(0,0,0,.28));color:#fff}
+.mini-chain-logo .chain-emblem,.chain-tile-mark .chain-emblem{width:94%;height:94%}
 .tower-emblem{width:82%;height:82%;display:block;overflow:visible;filter:drop-shadow(0 1px 1px rgba(0,0,0,.35))}
 .tower-emblem-spire{fill:#fff1b5;stroke:rgba(75,48,0,.45);stroke-width:.7}
 .tower-emblem-crown{fill:#f6d36b;stroke:#fff0ad;stroke-width:.8;stroke-linejoin:round}
@@ -355,3 +357,41 @@ body::before{content:"";position:fixed;inset:0;pointer-events:none;opacity:.16;b
 .disconnect-notice.auto{border-color:rgba(183,126,212,.4);background:rgba(61,30,72,.38)}
 .disconnect-notice.auto b{color:#e2b8f5}.disconnect-notice.auto span{color:#c9a9d5}
 @media(max-width:700px){.disconnect-notice{align-items:flex-start;flex-direction:column;gap:4px}.player-presence{margin-top:5px}.presence-chip{font-size:8px}}
+
+
+/* v16 merger board peek */
+.cell.merger-trigger{
+  border:2px solid #ffd166 !important;
+  box-shadow:0 0 0 2px rgba(255,209,102,.18),0 0 20px rgba(255,174,55,.34),inset 0 0 18px rgba(255,209,102,.1);
+  z-index:2;
+}
+.merger-tile-badge{
+  position:absolute;right:3px;bottom:3px;padding:2px 5px;border-radius:5px;
+  background:#ffd166;color:#172033;font-size:8px;font-weight:1000;line-height:1.2;
+  box-shadow:0 2px 8px rgba(0,0,0,.28);
+}
+.merger-board-btn{margin-top:14px;width:100%;border-color:#4d789b;background:#102b42;color:#dceeff}
+.merger-board-btn:hover{background:#153852}
+.merger-action-buttons{display:grid;grid-template-columns:minmax(130px,.75fr) minmax(180px,1.25fr);gap:10px;margin-top:14px}
+.merger-action-buttons .merger-board-btn{margin-top:0}
+.merger-peek-bar{
+  position:fixed;left:50%;bottom:18px;transform:translateX(-50%);z-index:1200;
+  width:min(760px,calc(100% - 28px));display:flex;align-items:center;justify-content:space-between;gap:16px;
+  padding:12px 14px;border:1px solid #315b78;border-radius:14px;
+  background:rgba(8,29,47,.96);box-shadow:0 14px 38px rgba(0,0,0,.42);backdrop-filter:blur(8px);
+}
+.merger-peek-bar>div{display:flex;flex-direction:column;gap:3px;min-width:0}
+.merger-peek-bar b{font-size:14px}.merger-peek-bar span{font-size:12px;color:var(--muted);line-height:1.35}
+.merger-peek-bar .btn{white-space:nowrap;flex:0 0 auto}
+@media (max-width:640px){
+  .merger-action-buttons{grid-template-columns:1fr}
+  .merger-peek-bar{align-items:stretch;flex-direction:column;bottom:10px}
+  .merger-peek-bar .btn{width:100%}
+}
+
+/* v17: SAFE chain markers on the board */
+.cell.safe-chain-cell{box-shadow:inset 0 0 0 1px rgba(117,224,255,.34),0 0 0 1px rgba(117,224,255,.18),0 0 12px rgba(80,190,235,.10)}
+.safe-chain-badge{position:absolute;right:3px;bottom:3px;z-index:7;display:inline-flex;align-items:center;gap:3px;padding:2px 5px;border-radius:999px;background:linear-gradient(180deg,rgba(9,40,58,.96),rgba(4,24,37,.96));border:1px solid #6bd8f4;color:#c9f6ff;font-size:7px;font-weight:1000;letter-spacing:.06em;line-height:1;box-shadow:0 1px 5px rgba(0,0,0,.35)}
+.safe-shield{font-size:7px;color:#8de9ff;transform:rotate(45deg);display:inline-block;text-shadow:0 0 5px rgba(141,233,255,.65)}
+.cell.safe-chain-cell .chain-tile-mark{box-shadow:inset 0 1px 0 rgba(255,255,255,.18),0 0 0 1px rgba(126,226,255,.18)}
+@media (max-width:620px){.safe-chain-badge{font-size:6px;padding:2px 4px;right:2px;bottom:2px}}

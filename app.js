@@ -73,6 +73,7 @@
     timeoutHandling: false,
     departureHandling: false,
     autoDisconnectedKey: '',
+    mergerBoardPeek: false,
     settings: (() => {
       try { return Object.assign({boardScale:100,showHints:true,reducedMotion:false}, JSON.parse(localStorage.getItem('acquireUiSettings')||'{}')); }
       catch { return {boardScale:100,showHints:true,reducedMotion:false}; }
@@ -146,7 +147,7 @@
     state.turnDeadline=Number(state.turnDeadline)||0;
     state.turnToken=Number(state.turnToken)||0;
     state.toast='';
-    ui.localSelectedTile=null; ui.pendingPlacementTile=null; ui.pendingDiscardTile=null; ui.drawReveal=null; ui.bonusEffect=null;
+    ui.localSelectedTile=null; ui.pendingPlacementTile=null; ui.pendingDiscardTile=null; ui.drawReveal=null; ui.bonusEffect=null; ui.mergerBoardPeek=false;
     if(state.lastBonusEvent?.id && state.lastBonusEvent.id!==previousBonusId) showBonusEffectLocal(state.lastBonusEvent);
     const enteringPlayableGame=(wasLobby && state.screen==='game' && !['SETUP_PICK','SETUP_REVEAL'].includes(state.phase));
     const setupJustFinished=((previousPhase==='SETUP_PICK'||previousPhase==='SETUP_REVEAL') && state.phase==='PLACE_TILE');
@@ -228,12 +229,47 @@
 
   function chainMarkHtml(id) {
     if (id === 'Tower') {
-      return `<svg class="tower-emblem" viewBox="0 0 48 48" aria-hidden="true" focusable="false">
+      return `<svg class="chain-emblem tower-emblem" viewBox="0 0 48 48" aria-hidden="true" focusable="false">
         <path class="tower-emblem-spire" d="M24 3l2.7 7.4h-5.4L24 3Z"/>
         <path class="tower-emblem-crown" d="M18 10h12l2 6h-3v4h5v23H14V20h5v-4h-3l2-6Z"/>
         <path class="tower-emblem-core" d="M20 18h8v25h-8z"/>
         <path class="tower-emblem-window" d="M17 24h3v4h-3zm11 0h3v4h-3zm-11 7h3v4h-3zm11 0h3v4h-3zm5-7h-1v12h1zM15 24h1v12h-1z"/>
         <path class="tower-emblem-door" d="M22 36h4v7h-4z"/>
+      </svg>`;
+    }
+    if (id === 'Sackson') {
+      return `<svg class="chain-emblem" viewBox="0 0 48 48" aria-hidden="true" focusable="false">
+        <path d="M33.8 13.1c-1.8-3.2-5.4-5.1-9.8-5.1-5.5 0-10 2.9-10 7.4 0 9.8 18.8 4.2 18.8 12.7 0 2.7-2.6 4.8-6.8 4.8-3.8 0-7.2-1.5-10-4.4l-4 4.7c3.1 3.6 8.1 5.8 13.9 5.8 7 0 12.7-3.8 12.7-9.8 0-10.6-18.8-5.1-18.8-12.8 0-2.3 2.2-3.9 5.8-3.9 3 0 5.7 1.1 8.1 3.5l4.1-2.9Z" fill="currentColor"/>
+      </svg>`;
+    }
+    if (id === 'American') {
+      return `<svg class="chain-emblem" viewBox="0 0 48 48" aria-hidden="true" focusable="false">
+        <path d="M24 10 10 38h6.1l2.6-5.9h10.6l2.6 5.9H38L24 10Zm0 9.6 3.3 7.6h-6.6l3.3-7.6Z" fill="currentColor"/>
+        <circle cx="16" cy="40" r="2.2" fill="currentColor"/><circle cx="24" cy="40" r="2.2" fill="currentColor"/><circle cx="32" cy="40" r="2.2" fill="currentColor"/>
+      </svg>`;
+    }
+    if (id === 'Festival') {
+      return `<svg class="chain-emblem" viewBox="0 0 48 48" aria-hidden="true" focusable="false">
+        <path d="M24 8c1.7 6.7 6.8 11.9 13.5 13.6-5.4 1.3-9.7 5.6-11.1 11-1.4-5.4-5.6-9.7-11-11C22 20 24 14.8 24 8Z" fill="currentColor" opacity=".92"/>
+        <path d="M11 22c6.3.9 10.8 5.7 12 12-2.1-3.4-5.9-5.6-10-5.6H11V22Zm26 0v6.4h-2c-4.1 0-7.9 2.2-10 5.6 1.2-6.3 5.7-11.1 12-12Z" fill="currentColor"/>
+      </svg>`;
+    }
+    if (id === 'Worldwide') {
+      return `<svg class="chain-emblem" viewBox="0 0 48 48" aria-hidden="true" focusable="false">
+        <circle cx="24" cy="24" r="13.5" fill="none" stroke="currentColor" stroke-width="3"/>
+        <path d="M11 24h26M24 10.5c4.3 4 6.5 8.5 6.5 13.5s-2.2 9.5-6.5 13.5c-4.3-4-6.5-8.5-6.5-13.5s2.2-9.5 6.5-13.5Zm-9.8 4.5c2.8 1.9 6.2 3 9.8 3s7-1.1 9.8-3M14.2 33c2.8-1.9 6.2-3 9.8-3s7 1.1 9.8 3" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>`;
+    }
+    if (id === 'Continental') {
+      return `<svg class="chain-emblem" viewBox="0 0 48 48" aria-hidden="true" focusable="false">
+        <path d="M36.5 16.8c-2.7-3.8-7.3-6.3-12.5-6.3-8.3 0-15 6.1-15 13.5S15.7 37.5 24 37.5c5.2 0 9.8-2.4 12.5-6.3h-6.6c-1.8 1.2-3.9 1.9-5.9 1.9-4.8 0-8.7-3.6-8.7-8.1s3.9-8.1 8.7-8.1c2 0 4.1.7 5.9 1.9h6.6Z" fill="currentColor"/>
+        <path d="M14 29.8c3.1 2.4 6.6 3.5 10 3.5 2.5 0 5-.6 7.5-1.8" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/>
+      </svg>`;
+    }
+    if (id === 'Imperial') {
+      return `<svg class="chain-emblem" viewBox="0 0 48 48" aria-hidden="true" focusable="false">
+        <path d="M13 20 10 14l6 2 3-6 5 5 5-5 3 6 6-2-3 6 5 4-4 4H12l-4-4 5-4Z" fill="currentColor"/>
+        <path d="M16 29h16v3H16zm2 4h12v3H18z" fill="currentColor" opacity=".92"/>
       </svg>`;
     }
     return escapeHtml(CHAIN[id]?.mark || String(id||'').slice(0,1));
@@ -993,6 +1029,8 @@
   function tileCell(tile) {
     const v=state.board[tile]; const placed=!!v; const selected=ui.localSelectedTile===tile;
     const discarded=state.discardedTiles?.[tile]||null;
+    const mergerTrigger=!!state.merger && state.merger.tile===tile;
+    const safeChain=!!v?.chain && isSafe(v.chain);
     const c=v?.chain?chainColor(v.chain):null;
     const mine=myPlayerIndex();
     const myTurn=canControlCurrent();
@@ -1001,10 +1039,12 @@
     const pl=target?playability(tile):null;
     const targetClass=target?(pl.ok?'playable-target':pl.kind==='temporary'?'temporary-target':'permanent-target'):'';
     const discardTitle=discarded?`${tile} · 폐기됨${discarded.by?` · ${discarded.by}`:''}`:'';
-    return `<button class="cell ${placed?'placed':''} ${discarded?'discarded-cell':''} ${selected?'selectable':''} ${target?'my-hand-target':''} ${targetClass}" data-cell="${tile}" ${placed||discarded||(!target && !selected)?'disabled':''} data-hand-target="${target?'1':'0'}" data-target-ok="${target&&pl?.ok?'1':'0'}" title="${escapeHtml(discardTitle)}" style="${c?`--chain:${c};border-color:${c}aa;background:linear-gradient(145deg,${c}55,#12283b)`:''}" aria-label="${tile}${discarded?' 폐기된 타일':target?' 내 타일 위치':''}">
+    return `<button class="cell ${placed?'placed':''} ${safeChain?'safe-chain-cell':''} ${discarded?'discarded-cell':''} ${mergerTrigger?'merger-trigger':''} ${selected?'selectable':''} ${target?'my-hand-target':''} ${targetClass}" data-cell="${tile}" ${placed||discarded||(!target && !selected)?'disabled':''} data-hand-target="${target?'1':'0'}" data-target-ok="${target&&pl?.ok?'1':'0'}" title="${escapeHtml(discardTitle)}" style="${c?`--chain:${c};border-color:${c}aa;background:linear-gradient(145deg,${c}55,#12283b)`:''}" aria-label="${tile}${safeChain?' 안전 체인':''}${discarded?' 폐기된 타일':target?' 내 타일 위치':''}">
       <span class="coord">${tile}</span>
       ${target?`<span class="target-label">${pl.ok?'배치':pl.kind==='permanent'?'폐기 가능':'보유'}</span>`:''}
       ${discarded?`<span class="discard-mark">×</span><span class="discard-label">폐기</span>`:''}
+      ${mergerTrigger?`<span class="merger-tile-badge">합병</span>`:''}
+      ${safeChain?`<span class="safe-chain-badge" title="안전 체인 · 11칸 이상"><span class="safe-shield">◆</span> SAFE</span>`:''}
       ${placed?(v.chain?`<span class="chain-tile-mark" style="--c:${c}">${chainMarkHtml(v.chain)}</span><span class="chain-letter">${chainName(v.chain).slice(0,1)}</span>`:'<span class="hotel-icon">▫️</span>'):''}
     </button>`;
   }
@@ -1096,7 +1136,7 @@
           <div class="log-box"><div class="section-title"><span>게임 로그</span><button type="button" class="mini-link-btn" data-open-info="history">전체 이력</button></div>${state.logs.slice(0,12).map(x=>`<div class="log-line">${escapeHtml(x)}</div>`).join('')||'<div class="log-line">게임 기록이 여기에 표시됩니다.</div>'}</div>
         </aside>
       </div>
-    </div>${renderModal()}${state.toast?`<div class="toast">${state.toast}</div>`:''}`;
+    </div>${renderModal()}${mergerBoardPeekHtml()}${state.toast?`<div class="toast">${state.toast}</div>`:''}`;
 
     document.querySelectorAll('[data-hand]').forEach(el=>el.onclick=()=>{
       if(!canControlCurrent())return toast('현재 내 턴이 아닙니다.');
@@ -1138,8 +1178,19 @@
     return `<div class="hotel ${active?'active-chain':''}" style="--hc:${h.color}"><div class="chain-logo ${h.id==='Tower'?'tower-chain-logo':''}">${chainMarkHtml(h.id)}</div><div><div class="hotel-name"><span style="color:${h.color}">●</span> ${h.name}</div><div class="hotel-sub">${active?`${size}칸${safe?' · SAFE':''}`:'미설립'} · 남은 주식 ${state.chainBank[h.id]} / 25</div><div class="hotel-sub">${active?`1주 ${money(stockPrice(h.id))}`:'거래 불가'}</div></div><div class="stock-step"><button data-buy-minus="${h.id}" ${state.phase!=='BUY_STOCK'||!active||n<=0?'disabled':''}>−</button><b>${n}</b><button data-buy-plus="${h.id}" ${state.phase!=='BUY_STOCK'||!active||state.chainBank[h.id]<=n?'disabled':''}>＋</button></div></div>`;
   }
 
+  function isMergerModal(m=state.modal) {
+    return !!m && ['chooseSurvivor','chooseDefunct','mergerDecision'].includes(m.type);
+  }
+
+  function mergerBoardPeekHtml() {
+    if(!ui.mergerBoardPeek || !state.merger || !isMergerModal()) return '';
+    const tile=state.merger.tile || '';
+    return `<div class="merger-peek-bar"><div><b>👀 합병 보드 보기</b><span>${tile?`${escapeHtml(tile)} 타일에서 합병 발생 · `:''}보드를 확인한 뒤 결정 화면으로 돌아가세요.</span></div><button type="button" class="btn primary" id="returnMergerDecision">합병 결정으로 돌아가기</button></div>`;
+  }
+
   function renderModal() {
     const m=state.modal; if(!m) return '';
+    if(ui.mergerBoardPeek && isMergerModal(m)) return '';
     if(m.type==='setupPick') {
       const mine=state.players.find(p=>p.clientId===net.clientId);
       const picked=mine?state.setupPicks[mine.clientId]:null;
@@ -1161,18 +1212,27 @@
       if(!canControlCurrent()) return `<div class="modal-back"><div class="modal card tile-pick-modal deck-modal"><h2>⏳ ${escapeHtml(currentPlayer().name)} 타일 뽑기 대기</h2><p>현재 플레이어가 뒤집힌 전체 타일 더미에서 보충 타일을 고르고 있습니다.</p><div class="deck-meta"><span>남은 타일 <b>${state.remainingDeck.length}</b>장</span></div></div></div>`;
       return `<div class="modal-back"><div class="modal card tile-pick-modal deck-modal"><span class="entry-kicker">DRAW TILE</span><h2>🧩 보충 타일을 뽑으세요</h2><p>남아 있는 타일 전체가 무작위로 섞여 있습니다. 뒷면 하나를 고르면 그때 좌표가 공개됩니다.</p><div class="deck-meta"><span>남은 타일 <b>${state.remainingDeck.length}</b>장</span><span>내 손패 ${state.hands[state.currentPlayer].length}/6장</span></div><div class="face-down-deck">${state.remainingDeck.map((_,i)=>`<button class="tile-back" data-draw-pick-index="${i}" aria-label="뒤집힌 보충 타일 ${i+1}"><i></i><span>◆</span></button>`).join('')}</div></div></div>`;
     }
-    if(m.type==='chooseChain') return `<div class="modal-back"><div class="modal card"><h2>🏗️ 새 체인 창립</h2><p>설립할 호텔 체인을 선택하세요. 은행에 주식이 남아 있으면 창립자 주식 1주를 무료로 받습니다.</p><div class="choice-grid">${inactiveChains().map(id=>`<button class="chain-choice" data-found="${id}" style="--c:${chainColor(id)}"><b>${chainName(id)}</b><small>기준가 ${money(CHAIN[id].base)}</small></button>`).join('')}</div></div></div>`;
-    if(m.type==='chooseSurvivor') return `<div class="modal-back"><div class="modal card"><h2>🤝 동률 합병</h2><p>가장 큰 체인들이 같은 크기입니다. 합병을 만든 플레이어가 존속 체인을 선택합니다.</p><div class="choice-grid">${m.candidates.map(id=>`<button class="chain-choice" data-survivor="${id}" style="--c:${chainColor(id)}"><b>${chainName(id)}</b><small>${state.merger.sizes[id]}칸</small></button>`).join('')}</div></div></div>`;
-    if(m.type==='chooseDefunct') return `<div class="modal-back"><div class="modal card"><h2>🔀 소멸 체인 처리 순서</h2><p>같은 크기의 소멸 체인이 있습니다. 합병을 만든 플레이어가 먼저 처리할 체인을 선택합니다.</p><div class="choice-grid">${m.candidates.map(id=>`<button class="chain-choice" data-defunct="${id}" style="--c:${chainColor(id)}" ${!canControlCurrent()?'disabled':''}><b>${chainName(id)}</b><small>${state.merger.sizes[id]}칸</small></button>`).join('')}</div>${!canControlCurrent()?'<p class="rule-note">현재 플레이어의 선택을 기다리는 중입니다.</p>':''}</div></div>`;
+    if(m.type==='chooseChain') {
+      if(!canControlCurrent()) return `<div class="modal-back"><div class="modal card"><h2>⏳ ${escapeHtml(currentPlayer().name)} 선택 대기</h2><p>${escapeHtml(currentPlayer().name)}님이 새 호텔 체인을 설립하는 중입니다.</p></div></div>`;
+      return `<div class="modal-back"><div class="modal card"><h2>🏗️ 새 체인 창립</h2><p>설립할 호텔 체인을 선택하세요. 은행에 주식이 남아 있으면 창립자 주식 1주를 무료로 받습니다.</p><div class="choice-grid">${inactiveChains().map(id=>`<button class="chain-choice" data-found="${id}" style="--c:${chainColor(id)}"><b>${chainName(id)}</b><small>기준가 ${money(CHAIN[id].base)}</small></button>`).join('')}</div></div></div>`;
+    }
+    if(m.type==='chooseSurvivor') {
+      if(!canControlCurrent()) return `<div class="modal-back"><div class="modal card"><h2>⏳ ${escapeHtml(currentPlayer().name)} 선택 대기</h2><p>${escapeHtml(currentPlayer().name)}님이 동률 합병의 존속 체인을 고르는 중입니다.</p><button type="button" class="btn merger-board-btn" data-merger-board-view>🗺️ 보드 보기</button></div></div>`;
+      return `<div class="modal-back"><div class="modal card"><h2>🤝 동률 합병</h2><p>가장 큰 체인들이 같은 크기입니다. 합병을 만든 플레이어가 존속 체인을 선택합니다.</p><div class="choice-grid">${m.candidates.map(id=>`<button class="chain-choice" data-survivor="${id}" style="--c:${chainColor(id)}"><b>${chainName(id)}</b><small>${state.merger.sizes[id]}칸</small></button>`).join('')}</div><button type="button" class="btn merger-board-btn" data-merger-board-view>🗺️ 보드 보기</button></div></div>`;
+    }
+    if(m.type==='chooseDefunct') {
+      if(!canControlCurrent()) return `<div class="modal-back"><div class="modal card"><h2>⏳ ${escapeHtml(currentPlayer().name)} 선택 대기</h2><p>${escapeHtml(currentPlayer().name)}님이 같은 크기의 소멸 체인 처리 순서를 정하는 중입니다.</p><button type="button" class="btn merger-board-btn" data-merger-board-view>🗺️ 보드 보기</button></div></div>`;
+      return `<div class="modal-back"><div class="modal card"><h2>🔀 소멸 체인 처리 순서</h2><p>같은 크기의 소멸 체인이 있습니다. 합병을 만든 플레이어가 먼저 처리할 체인을 선택합니다.</p><div class="choice-grid">${m.candidates.map(id=>`<button class="chain-choice" data-defunct="${id}" style="--c:${chainColor(id)}"><b>${chainName(id)}</b><small>${state.merger.sizes[id]}칸</small></button>`).join('')}</div><button type="button" class="btn merger-board-btn" data-merger-board-view>🗺️ 보드 보기</button></div></div>`;
+    }
     if(m.type==='mergerDecision') {
       const p=state.players[m.playerIndex]; const price=stockPrice(m.defunct,state.merger.sizes[m.defunct]); const used=m.sell+m.tradePairs*2; const held=m.total-used;
-      if(p.clientId!==net.clientId) return `<div class="modal-back"><div class="modal card"><h2>⏳ ${escapeHtml(p.name)} 선택 대기</h2><p>${chainName(m.defunct)} 주식의 매도·교환·보유 결정을 기다리고 있습니다.</p></div></div>`;
+      if(p.clientId!==net.clientId) return `<div class="modal-back"><div class="modal card"><h2>⏳ ${escapeHtml(p.name)} 선택 대기</h2><p>${chainName(m.defunct)} 주식의 매도·교환·보유 결정을 기다리고 있습니다.</p><button type="button" class="btn merger-board-btn" data-merger-board-view>🗺️ 보드 보기</button></div></div>`;
       return `<div class="modal-back"><div class="modal card"><h2>💼 ${escapeHtml(p.name)} · 합병 주식 처리</h2><p><b style="color:${chainColor(m.defunct)}">${chainName(m.defunct)}</b> ${m.total}주를 어떻게 처리할까요? 매도와 교환을 섞을 수 있고 남은 주식은 보유합니다.</p>
         <div class="merger-info"><div><small>소멸 체인 주가</small><b>${money(price)}</b></div><div><small>존속 체인</small><b style="color:${chainColor(m.survivor)}">${chainName(m.survivor)}</b></div><div><small>존속 체인 은행 주식</small><b>${state.chainBank[m.survivor]}주</b></div></div>
         <div class="decision-row"><span>현금 매도</span><div class="counter"><button data-md="sell,-1">−</button><b>${m.sell}주</b><button data-md="sell,1">＋</button></div><strong>+${money(m.sell*price)}</strong></div>
         <div class="decision-row"><span>2:1 주식 교환</span><div class="counter"><button data-md="trade,-1">−</button><b>${m.tradePairs*2} → ${m.tradePairs}주</b><button data-md="trade,1">＋</button></div><strong>${chainName(m.survivor)}</strong></div>
         <div class="decision-row hold"><span>그대로 보유</span><strong>${held}주</strong><span class="muted-mini">나중에 같은 체인이 재창립될 수 있음</span></div>
-        <button class="btn primary" id="confirmMerger" style="width:100%;padding:13px;margin-top:12px">처리 확정</button></div></div>`;
+        <div class="merger-action-buttons"><button type="button" class="btn merger-board-btn" data-merger-board-view>🗺️ 보드 보기</button><button class="btn primary" id="confirmMerger">처리 확정</button></div></div></div>`;
     }
     if(m.type==='results') {
       const top=state.results.slice(0,3);
@@ -1191,6 +1251,8 @@
     document.querySelectorAll('[data-defunct]').forEach(el=>el.onclick=()=>{if(canControlCurrent())localDo(()=>chooseDefunct(el.dataset.defunct));});
     document.querySelectorAll('[data-md]').forEach(el=>el.onclick=()=>{const [k,d]=el.dataset.md.split(',');localDo(()=>adjustMergerDecision(k,Number(d)));});
     const cm=document.getElementById('confirmMerger'); if(cm)cm.onclick=()=>localDo(confirmMergerDecision);
+    document.querySelectorAll('[data-merger-board-view]').forEach(el=>el.onclick=()=>{ui.mergerBoardPeek=true;render();});
+    const back=document.getElementById('returnMergerDecision'); if(back)back.onclick=()=>{ui.mergerBoardPeek=false;render();};
     const rn=document.getElementById('resultNew'); if(rn)rn.onclick=newGame;
   }
 
