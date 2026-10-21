@@ -476,3 +476,55 @@ body::before{content:"";position:fixed;inset:0;pointer-events:none;opacity:.16;b
   .bgm-volume{flex:1}
   .bgm-volume input[type="range"]{width:100%;min-width:90px}
 }
+
+/* v23 · one-screen responsive game layout */
+.mobile-info-tabs{display:none}
+.mobile-emote-toast{display:none}
+body.game-screen-active{overflow:hidden}
+.one-screen-game{height:100dvh;min-height:0;padding:10px 14px 12px;display:flex;flex-direction:column;overflow:hidden}
+.one-screen-game>.header{flex:0 0 auto;margin-bottom:8px;padding-bottom:8px;min-height:48px}
+.one-screen-game .logo{width:36px;height:36px;border-radius:10px;font-size:17px}
+.one-screen-game .brand-title{font-size:17px}.one-screen-game .brand-sub{font-size:8px}
+.one-screen-game .top-actions{gap:5px;align-items:center}.one-screen-game .header-text-btn,.one-screen-game .header-icon-btn{min-height:30px}
+.one-screen-game .game-layout{flex:1;min-height:0;grid-template-columns:220px minmax(0,1fr) 286px;gap:9px;align-items:stretch;overflow:hidden}
+.one-screen-game .side-panel,.one-screen-game .market{position:static;min-height:0;overflow:auto;scrollbar-width:thin;padding:9px}
+.one-screen-game .center-stack{min-height:0;display:grid;grid-template-rows:auto minmax(0,1fr) auto;gap:8px;overflow:hidden}
+.one-screen-game .turn-banner{padding:9px 12px;min-height:48px}.one-screen-game .turn-banner .big{font-size:16px}.one-screen-game .turn-banner .small{font-size:10px}
+.one-screen-game .board-card{min-height:0;padding:8px;display:flex;flex-direction:column;overflow:hidden}
+.one-screen-game .board-head{margin-bottom:6px}.one-screen-game .board-head h2{font-size:14px}.one-screen-game .board-head .badge{padding:4px 6px;font-size:9px}
+.one-screen-game .board-wrap{flex:1;min-height:0;overflow:hidden;display:flex;align-items:center;justify-content:center;padding:0}
+.one-screen-game .board{width:100%;min-width:0;transform:none!important;margin:0!important;grid-template-columns:repeat(12,minmax(0,1fr));gap:3px}
+.one-screen-game .cell{min-height:0;aspect-ratio:1.16/1;padding:2px;border-radius:5px}.one-screen-game .cell .coord{top:2px;left:3px;font-size:8px}.one-screen-game .chain-tile-mark{inset:7px}
+.one-screen-game .legend{margin-top:5px;gap:5px}.one-screen-game .legend>span{font-size:8px}
+.one-screen-game .hand-card{padding:8px;min-height:0}.one-screen-game .hand-card .section-title{margin-bottom:5px}.one-screen-game .hand{grid-template-columns:repeat(6,minmax(0,1fr));gap:5px}.one-screen-game .hand-tile{min-height:46px;padding:7px 4px;border-radius:8px;font-size:12px}.one-screen-game .tile-state{font-size:8px;margin-top:2px}.one-screen-game .help{margin-top:5px;padding:6px 8px;font-size:9px;line-height:1.35}
+.one-screen-game .player-card{padding:7px;margin-bottom:5px;border-radius:9px}.one-screen-game .player-avatar{width:23px;height:23px;flex-basis:23px;border-radius:7px;font-size:10px}.one-screen-game .player-head strong{font-size:11px}.one-screen-game .player-head .badge{font-size:8px;padding:3px 5px}.one-screen-game .player-meta{margin-top:4px;font-size:9px}.one-screen-game .cash{font-size:11px}.one-screen-game .stock-tags{gap:3px;margin-top:4px}.one-screen-game .stock-tags span{font-size:8px;padding:2px 4px}.one-screen-game .player-presence{font-size:8px}
+.one-screen-game .market-summary{padding:7px;margin-bottom:6px}.one-screen-game .market-summary .total{font-size:18px}.one-screen-game .hotel-list{gap:4px}.one-screen-game .hotel{padding:5px;grid-template-columns:30px 1fr auto;gap:6px}.one-screen-game .chain-logo{width:30px;height:30px;flex-basis:30px;border-radius:8px}.one-screen-game .hotel-name{font-size:10px}.one-screen-game .hotel-sub{font-size:8px}.one-screen-game .stock-step{grid-template-columns:22px 18px 22px}.one-screen-game .stock-step button{min-height:23px;padding:0}.one-screen-game .market-actions{gap:4px;margin-top:6px}.one-screen-game .market-actions .btn{padding:6px 8px;font-size:9px}.one-screen-game .log-box{margin-top:6px;padding:6px;max-height:100px}.one-screen-game .log-line{font-size:8px;padding:2px 0}
+
+@media(max-width:900px){
+  body.game-screen-active{height:100dvh;overflow:hidden}
+  .one-screen-game{padding:5px 6px 6px;height:100dvh}
+  .one-screen-game>.header{order:1;min-height:40px;margin-bottom:4px;padding-bottom:4px;gap:5px;flex-wrap:nowrap;overflow:visible}
+  .one-screen-game .brand{gap:6px;min-width:0}.one-screen-game .logo{width:30px;height:30px;flex:0 0 30px}.one-screen-game .brand-title{font-size:13px;white-space:nowrap}.one-screen-game .classic-tag,.one-screen-game .brand-sub{display:none}
+  .one-screen-game .top-actions{margin-left:auto;flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;min-width:0}.one-screen-game .top-actions::-webkit-scrollbar{display:none}.one-screen-game .connection-dot,.one-screen-game .room-badge,.one-screen-game .top-actions>.badge.gold{display:none}
+  .one-screen-game .header-text-btn{padding:5px 7px;font-size:9px;white-space:nowrap}.one-screen-game .header-icon-btn{width:28px;height:28px;flex:0 0 28px}.one-screen-game .bgm-control{width:auto;flex:0 0 auto;padding:2px}.one-screen-game .bgm-volume{display:none}.one-screen-game .bgm-toggle{font-size:9px!important;padding:0 5px!important}
+  .one-screen-game .game-layout{order:2;display:flex;flex-direction:column;gap:5px;min-height:0;overflow:hidden}
+  .one-screen-game .center-stack{order:1;flex:1;min-height:0;grid-template-rows:auto minmax(0,1fr) auto;gap:4px}
+  .one-screen-game .mobile-info-panel{display:none!important;order:2;flex:0 0 auto;max-height:168px;overflow:auto}
+  .one-screen-game .mobile-info-panel.mobile-open{display:block!important}
+  .mobile-info-tabs{order:3;display:grid;grid-template-columns:1fr 1fr;gap:5px;flex:0 0 38px;margin-top:4px}
+  .mobile-info-tabs button{border:1px solid #294d68;background:#081c2b;color:#8eabbf;border-radius:9px;font-size:11px;font-weight:900}
+  .mobile-info-tabs button.active{border-color:#5cc8ff;background:#123852;color:#eaf9ff;box-shadow:inset 0 0 0 1px rgba(92,200,255,.14)}
+  .one-screen-game .turn-banner{padding:6px 8px;min-height:40px;flex-direction:row;align-items:center}.one-screen-game .turn-banner .big{font-size:13px}.one-screen-game .turn-banner .small{font-size:8px}.one-screen-game .turn-banner .status-row{gap:3px}.one-screen-game .turn-banner .badge{padding:3px 5px;font-size:7px}.one-screen-game .turn-banner .badge.green{display:none}.one-screen-game .turn-timer{font-size:9px}
+  .one-screen-game .board-card{padding:4px}.one-screen-game .board-head{margin-bottom:3px}.one-screen-game .board-head h2{font-size:11px}.one-screen-game .board-head .status-row .badge:first-child{display:none}.one-screen-game .board-head .badge{font-size:7px;padding:2px 4px}
+  .one-screen-game .board{gap:2px}.one-screen-game .cell{border-radius:3px;aspect-ratio:1.14/1}.one-screen-game .cell .coord{font-size:6.5px;top:1px;left:2px}.one-screen-game .chain-tile-mark{inset:4px;border-radius:4px}.one-screen-game .safe-badge{font-size:5px!important;padding:1px 2px!important}.one-screen-game .merger-badge{font-size:5px!important}
+  .one-screen-game .legend{display:none}
+  .one-screen-game .hand-card{padding:5px}.one-screen-game .hand-card .section-title{margin-bottom:3px;font-size:10px}.one-screen-game .hand{grid-template-columns:repeat(6,minmax(0,1fr));gap:3px}.one-screen-game .hand-tile{min-height:39px;padding:4px 2px;font-size:10px}.one-screen-game .tile-state{font-size:6.5px}.one-screen-game .help{display:none}
+  .one-screen-game .players-grid-mobile{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:4px}.one-screen-game .player-card{margin:0;padding:5px}.one-screen-game .player-presence{display:none}.one-screen-game .stock-tags{max-height:25px;overflow:hidden}
+  .one-screen-game .market{padding:6px}.one-screen-game .market>.section-title{margin-bottom:4px;font-size:10px}.one-screen-game .market-summary{display:flex;align-items:center;gap:8px;padding:5px}.one-screen-game .market-summary>div{font-size:8px!important}.one-screen-game .market-summary .total{font-size:13px!important}.one-screen-game .hotel-list{grid-template-columns:repeat(2,minmax(0,1fr));gap:3px}.one-screen-game .hotel{grid-template-columns:24px minmax(0,1fr) auto;padding:4px;gap:4px}.one-screen-game .chain-logo{width:24px;height:24px;flex-basis:24px}.one-screen-game .hotel-name{font-size:9px}.one-screen-game .hotel-sub{font-size:7px}.one-screen-game .stock-step{grid-template-columns:19px 14px 19px}.one-screen-game .stock-step button{min-height:20px;font-size:9px}.one-screen-game .market-actions{grid-template-columns:1fr 1fr}.one-screen-game .market-actions .btn{font-size:8px;padding:5px}.one-screen-game .log-box{display:none}
+  .mobile-emote-toast{display:flex;position:fixed;z-index:1180;left:50%;top:48px;transform:translateX(-50%);align-items:center;gap:6px;max-width:calc(100vw - 24px);padding:7px 10px;border-radius:999px;background:rgba(247,251,255,.97);color:#102132;border:1px solid #d6e7f3;box-shadow:0 8px 24px rgba(0,0,0,.3);animation:emotePopMobile .2s ease-out;white-space:nowrap;overflow:hidden}
+  .mobile-emote-toast span{font-size:18px;flex:0 0 auto}.mobile-emote-toast b{font-size:10px;flex:0 0 auto}.mobile-emote-toast em{font-style:normal;font-size:10px;overflow:hidden;text-overflow:ellipsis}
+}
+@media(max-width:390px){
+  .one-screen-game .players-grid-mobile{grid-template-columns:repeat(2,minmax(0,1fr))}.one-screen-game .hotel-list{grid-template-columns:1fr 1fr}.one-screen-game .mobile-info-panel{max-height:150px}.one-screen-game .hand-tile{font-size:9px}.one-screen-game .tile-state{font-size:6px}
+}
+@keyframes emotePopMobile{from{opacity:0;transform:translateX(-50%) translateY(-6px) scale(.96)}to{opacity:1;transform:translateX(-50%) translateY(0) scale(1)}}

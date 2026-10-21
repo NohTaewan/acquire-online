@@ -23,7 +23,7 @@
       {emoji:'😱', text:'헉?!'}, {emoji:'👀', text:'진짜?!'}, {emoji:'😳', text:'이게 된다고?'}, {emoji:'🤯', text:'와... 대박!'}
     ]},
     {id:'taunt', label:'도발', icon:'😏', items:[
-      {emoji:'😏', text:'설마 그걸 놓겠어?'}, {emoji:'😎', text:'합병 들어와!'}, {emoji:'😈', text:'계획대로...'}, {emoji:'👀', text:'따라올 수 있겠어?'}
+      {emoji:'💰', text:'돈 좀 남겨두지 그랬어?'}, {emoji:'😏', text:'지금 후회할 텐데?'}, {emoji:'😎', text:'한 수 늦었네'}, {emoji:'💸', text:'주식 그렇게 사는 거 맞아?'}
     ]},
     {id:'rally', label:'선동', icon:'📣', items:[
       {emoji:'🚌', text:'어서 타요!'}, {emoji:'🚌💨', text:'합병 버스 출발!'}, {emoji:'🔥', text:'같이 갑시다!'}, {emoji:'📣', text:'지금이 타이밍!'}
@@ -96,6 +96,7 @@
     mergerBoardPeek: false,
     emoteMenu: false,
     emoteCategory: null,
+    mobilePanel: 'players',
     dismissedReactionIds: {},
     settings: (() => {
       try { return Object.assign({boardScale:100,showHints:true,reducedMotion:false}, JSON.parse(localStorage.getItem('acquireUiSettings')||'{}')); }
@@ -285,6 +286,10 @@
     state.turnToken=Number(state.turnToken)||0;
     state.toast='';
     ui.localSelectedTile=null; ui.pendingPlacementTile=null; ui.pendingDiscardTile=null; ui.drawReveal=null; ui.bonusEffect=null; ui.mergerBoardPeek=false;
+    if(previousPhase!==state.phase){
+      if(state.phase==='BUY_STOCK') ui.mobilePanel='market';
+      else if(state.phase==='PLACE_TILE') ui.mobilePanel='players';
+    }
     if(state.lastBonusEvent?.id && state.lastBonusEvent.id!==previousBonusId) showBonusEffectLocal(state.lastBonusEvent);
     const enteringPlayableGame=(wasLobby && state.screen==='game' && !['SETUP_PICK','SETUP_REVEAL'].includes(state.phase));
     const setupJustFinished=((previousPhase==='SETUP_PICK'||previousPhase==='SETUP_REVEAL') && state.phase==='PLACE_TILE');
@@ -449,6 +454,13 @@
   function playerEmoteBubbleHtml(p) {
     const e=activePlayerEmote(p.clientId); if(!e) return '';
     return `<div class="player-emote-bubble" aria-live="polite"><span>${escapeHtml(e.emoji)}</span><b>${escapeHtml(e.text)}</b></div>`;
+  }
+  function mobileEmoteToastHtml() {
+    const now=Date.now();
+    const active=Object.values(state.playerEmotes||{}).filter(e=>Number(e.expiresAt)>now).sort((a,b)=>Number(b.createdAt||0)-Number(a.createdAt||0))[0];
+    if(!active) return '';
+    const p=state.players.find(x=>x.clientId===active.clientId);
+    return `<div class="mobile-emote-toast" aria-live="polite"><span>${escapeHtml(active.emoji)}</span><b>${escapeHtml(p?.name||'플레이어')}</b><em>${escapeHtml(active.text)}</em></div>`;
   }
   function playerQuickReactionHtml(p) {
     if(p.clientId!==net.clientId) return '';
@@ -1334,6 +1346,7 @@
   }
 
   function renderLobby() {
+    document.body.classList.remove('game-screen-active');
     const inRoom=!!net.roomCode;
     const connectedCount=net.members.filter(m=>m.connected!==false).length;
     app.innerHTML=`<div class="app-shell lobby-shell">${headerHtml()}
@@ -1392,10 +1405,12 @@
   }
 
   function renderGame() {
+    document.body.classList.add('game-screen-active');
     const cp=currentPlayer(); const mine=myPlayerIndex(); const hand=(mine>=0?state.hands[mine]:[])||[]; const myTurn=canControlCurrent(); const buyCount=pendingBuyCount(); const buyCost=pendingBuyCost();
-    app.innerHTML=`<div class="app-shell">${headerHtml(true)}
+    app.innerHTML=`<div class="app-shell one-screen-game">${headerHtml(true)}
+      <div class="mobile-info-tabs" role="tablist" aria-label="게임 정보"><button type="button" class="${ui.mobilePanel==='players'?'active':''}" data-mobile-panel="players">👑 플레이어</button><button type="button" class="${ui.mobilePanel==='market'?'active':''}" data-mobile-panel="market">📈 주식</button></div>
       <div class="game-layout">
-        <aside class="card side-panel"><div class="section-title"><span>👑 플레이어</span><span class="badge">${state.players.length}명</span></div><div class="players-grid-mobile">
+        <aside class="card side-panel mobile-info-panel ${ui.mobilePanel==='players'?'mobile-open':''}"><div class="section-title"><span>👑 플레이어</span><span class="badge">${state.players.length}명</span></div><div class="players-grid-mobile">
           ${state.players.map((p,i)=>{const bp=state.modal?.type==='mergerBrief'?(state.modal.payouts||[]).find(x=>x.playerIndex===i):null;const mineCard=p.clientId===net.clientId;return `<div class="player-card ${i===state.currentPlayer?'active':''} ${mineCard?'me emote-clickable':''} ${memberStatus(p.clientId)?.autoPlay?'auto-player':''} ${bp?'bonus-receiving':''}" ${mineCard?'data-open-emotes="1" role="button" tabindex="0" aria-label="내 이모티콘 열기"':''} style="--player:${p.profileColor||seatColor(i)}">${playerEmoteBubbleHtml(p)}${playerQuickReactionHtml(p)}<div class="player-head"><span class="player-avatar">${escapeHtml(p.name.slice(0,1).toUpperCase())}</span><strong>${escapeHtml(p.name)}${i===state.currentPlayer?' ◀':''}</strong><span class="badge">${i+1}</span></div><div class="player-presence">${playerConnectionHtml(p)}${mineCard?'<span class="emote-hint">💬 내 카드 눌러 반응</span>':''}</div><div class="player-meta"><span>타일 ${state.hands[i].length}장</span><span class="cash ${bp?'cash-counting':''}" ${bp?`data-cash-before="${Number(bp.cashBefore)||0}" data-cash-after="${Number(bp.cashAfter)||p.cash}"`:''}>${money(bp?bp.cashBefore:p.cash)}</span>${bp?`<span class="cash-gain-float">+${money(bp.amount)}</span>`:''}</div><div class="stock-tags">${playerStockTags(p)}</div></div>`}).join('')}
         </div></aside>
 
@@ -1409,15 +1424,16 @@
           </div><div class="help game-help">${helpText()}</div></section>
         </main>
 
-        <aside class="card market"><div class="section-title"><span>📈 STOCK EXCHANGE</span><span class="badge">최대 3주</span></div>
+        <aside class="card market mobile-info-panel ${ui.mobilePanel==='market'?'mobile-open':''}"><div class="section-title"><span>📈 STOCK EXCHANGE</span><span class="badge">최대 3주</span></div>
           <div class="market-summary"><div style="color:var(--muted);font-size:12px">선택 ${buyCount}/3주 · 총 구매 금액</div><div class="total">${money(buyCost)}</div><div style="color:var(--muted);font-size:11px">보유 현금 ${money(cp.cash)}</div></div>
           <div class="hotel-list">${HOTEL_CHAINS.map(h=>hotelMarketHtml(h)).join('')}</div>
           <div class="market-actions"><button class="btn primary" id="confirmBuy" ${!myTurn||state.phase!=='BUY_STOCK'?'disabled':''}>${buyCount?'선택 주식 구매 확정':'주식 구매 없이 진행'}</button><button class="btn primary" id="endTurn" disabled>팝업에서 타일 뽑기</button><button class="btn gold" id="declareEnd" ${!myTurn||!canEndGame()||!['BUY_STOCK','END_TURN'].includes(state.phase)?'disabled':''}>🏁 게임 종료 선언</button><button class="btn danger" id="resetGame">방 나가기</button></div>
           <div class="log-box"><div class="section-title"><span>게임 로그</span><button type="button" class="mini-link-btn" data-open-info="history">전체 이력</button></div>${state.logs.slice(0,12).map(x=>`<div class="log-line">${escapeHtml(x)}</div>`).join('')||'<div class="log-line">게임 기록이 여기에 표시됩니다.</div>'}</div>
         </aside>
       </div>
-    </div>${renderModal()}${mergerBoardPeekHtml()}${state.toast?`<div class="toast">${state.toast}</div>`:''}`;
+    </div>${mobileEmoteToastHtml()}${renderModal()}${mergerBoardPeekHtml()}${state.toast?`<div class="toast">${state.toast}</div>`:''}`;
 
+    document.querySelectorAll('[data-mobile-panel]').forEach(el=>el.onclick=()=>{ui.mobilePanel=el.dataset.mobilePanel;render();});
     document.querySelectorAll('[data-open-emotes]').forEach(el=>{
       const open=()=>{ui.emoteMenu=true;ui.emoteCategory=null;render();};
       el.onclick=(ev)=>{ if(ev.target.closest('button')) return; open(); };
