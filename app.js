@@ -95,12 +95,117 @@
     autoDisconnectedKey: '',
     mergerBoardPeek: false,
     emoteMenu: false,
+    emoteCategory: null,
     dismissedReactionIds: {},
     settings: (() => {
       try { return Object.assign({boardScale:100,showHints:true,reducedMotion:false}, JSON.parse(localStorage.getItem('acquireUiSettings')||'{}')); }
       catch { return {boardScale:100,showHints:true,reducedMotion:false}; }
     })(),
   };
+
+
+  const bgm = {
+    enabled: localStorage.getItem('acquireBgmEnabled') !== '0',
+    volume: Math.min(1, Math.max(0, Number(localStorage.getItem('acquireBgmVolume') || '0.28'))),
+    currentIndex: 0,
+    playing: false,
+    unlocked: false,
+    gapTimer: null,
+    tracks: [
+      {src:'bgm1.mp3', label:'BGM 1', gain:1.00},
+      {src:'bgm2.mp3', label:'BGM 2', gain:0.75},
+    ],
+    audio: [],
+  };
+
+  function initBgm(){
+    if(bgm.audio.length) return;
+    bgm.audio=bgm.tracks.map((track,index)=>{
+      const a=new Audio(track.src);
+      a.preload='auto';
+      a.loop=false;
+      a.volume=Math.min(1,bgm.volume*track.gain);
+      a.addEventListener('ended',()=>{
+        if(index!==bgm.currentIndex) return;
+        bgm.playing=false;
+        bgm.currentIndex=(bgm.currentIndex+1)%bgm.tracks.length;
+        updateBgmControls();
+        clearTimeout(bgm.gapTimer);
+        bgm.gapTimer=setTimeout(()=>{
+          bgm.gapTimer=null;
+          tryStartBgm();
+        },2000);
+      });
+      a.addEventListener('error',()=>{
+        if(index!==bgm.currentIndex) return;
+        bgm.playing=false;
+        bgm.currentIndex=(bgm.currentIndex+1)%bgm.tracks.length;
+        clearTimeout(bgm.gapTimer);
+        bgm.gapTimer=setTimeout(()=>{bgm.gapTimer=null;tryStartBgm();},2000);
+      });
+      return a;
+    });
+  }
+  function applyBgmVolume(){
+    initBgm();
+    bgm.audio.forEach((a,i)=>{ a.volume=Math.min(1,bgm.volume*bgm.tracks[i].gain); });
+  }
+  function stopBgm(reset=true){
+    clearTimeout(bgm.gapTimer); bgm.gapTimer=null;
+    initBgm();
+    bgm.audio.forEach(a=>{ a.pause(); if(reset){ try{a.currentTime=0;}catch{} } });
+    bgm.playing=false;
+    if(reset) bgm.currentIndex=0;
+    updateBgmControls();
+  }
+  async function tryStartBgm(){
+    initBgm();
+    if(!bgm.enabled || !bgm.unlocked || state.screen!=='game' || bgm.playing || bgm.gapTimer) return;
+    const a=bgm.audio[bgm.currentIndex];
+    bgm.audio.forEach((other,i)=>{ if(i!==bgm.currentIndex) other.pause(); });
+    if(a.ended || !Number.isFinite(a.currentTime) || a.currentTime>=Math.max(0,a.duration-.1)) { try{a.currentTime=0;}catch{} }
+    a.volume=Math.min(1,bgm.volume*bgm.tracks[bgm.currentIndex].gain);
+    try{
+      await a.play();
+      bgm.playing=true;
+    }catch{
+      bgm.playing=false;
+    }
+    updateBgmControls();
+  }
+  function syncBgmForScreen(){
+    if(state.screen!=='game') { if(bgm.playing || bgm.gapTimer) stopBgm(true); return; }
+    if(bgm.enabled && bgm.unlocked && !bgm.playing && !bgm.gapTimer) tryStartBgm();
+  }
+  function unlockBgm(){
+    bgm.unlocked=true;
+    if(state.screen==='game' && bgm.enabled) tryStartBgm();
+  }
+  function toggleBgm(){
+    bgm.unlocked=true;
+    bgm.enabled=!bgm.enabled;
+    localStorage.setItem('acquireBgmEnabled', bgm.enabled?'1':'0');
+    if(bgm.enabled) tryStartBgm(); else stopBgm(false);
+    updateBgmControls();
+  }
+  function setBgmVolume(value){
+    bgm.volume=Math.min(1,Math.max(0,Number(value)||0));
+    localStorage.setItem('acquireBgmVolume',String(bgm.volume));
+    applyBgmVolume();
+    updateBgmControls();
+  }
+  function updateBgmControls(){
+    const btn=document.getElementById('bgmToggle');
+    if(btn){
+      btn.textContent=bgm.enabled?'🔊 BGM':'🔇 BGM';
+      btn.setAttribute('aria-pressed',bgm.enabled?'true':'false');
+      btn.title=bgm.enabled?`${bgm.tracks[bgm.currentIndex]?.label||'BGM'} 재생 중/대기 · 클릭해서 끄기`:'BGM 켜기';
+    }
+    const range=document.getElementById('bgmVolume');
+    if(range && document.activeElement!==range) range.value=String(Math.round(bgm.volume*100));
+    const val=document.getElementById('bgmVolumeValue');
+    if(val) val.textContent=`${Math.round(bgm.volume*100)}%`;
+  }
 
   function saveUiSettings(){
     localStorage.setItem('acquireUiSettings', JSON.stringify(ui.settings));
@@ -337,6 +442,7 @@
     state.playerEmotes[cid]=event;
     const q=activeReactionPrompt(cid); if(q){ui.dismissedReactionIds=ui.dismissedReactionIds||{};ui.dismissedReactionIds[q.id]=true;}
     ui.emoteMenu=false;
+    ui.emoteCategory=null;
     sendNet({type:'emote',roomCode:net.roomCode,emoji:event.emoji,text:event.text,source:event.source,id:event.id,createdAt:event.createdAt,expiresAt:event.expiresAt});
     render();
   }
@@ -1313,7 +1419,7 @@
     </div>${renderModal()}${mergerBoardPeekHtml()}${state.toast?`<div class="toast">${state.toast}</div>`:''}`;
 
     document.querySelectorAll('[data-open-emotes]').forEach(el=>{
-      const open=()=>{ui.emoteMenu=true;render();};
+      const open=()=>{ui.emoteMenu=true;ui.emoteCategory=null;render();};
       el.onclick=(ev)=>{ if(ev.target.closest('button')) return; open(); };
       el.onkeydown=(ev)=>{ if(ev.key==='Enter'||ev.key===' '){ev.preventDefault();open();} };
     });
@@ -1392,7 +1498,11 @@
 
   function renderEmoteModal() {
     if(!ui.emoteMenu || state.screen!=='game' || myPlayerIndex()<0) return '';
-    return `<div class="modal-back local-modal-back emote-modal-back"><div class="modal card emote-modal"><button type="button" class="modal-close" data-close-emotes aria-label="닫기">×</button><span class="entry-kicker">QUICK CHAT</span><h2>💬 이모티콘 보내기</h2><p>선택한 말풍선은 모든 플레이어에게 약 3초간 보여요.</p><div class="emote-category-list">${EMOTE_CATEGORIES.map(cat=>`<section class="emote-category"><h3><span>${cat.icon}</span>${cat.label}</h3><div class="emote-options">${cat.items.map(item=>`<button type="button" data-send-emote data-emoji="${escapeHtml(item.emoji)}" data-text="${escapeHtml(item.text)}"><span>${escapeHtml(item.emoji)}</span><b>${escapeHtml(item.text)}</b></button>`).join('')}</div></section>`).join('')}</div></div></div>`;
+    const selected=EMOTE_CATEGORIES.find(cat=>cat.id===ui.emoteCategory) || null;
+    if(!selected) {
+      return `<div class="modal-back local-modal-back emote-modal-back"><div class="modal card emote-modal"><button type="button" class="modal-close" data-close-emotes aria-label="닫기">×</button><span class="entry-kicker">QUICK CHAT</span><h2>💬 이모티콘 보내기</h2><p>대항목을 먼저 고르세요. 선택한 말풍선은 모든 플레이어에게 약 3초간 보여요.</p><div class="emote-main-categories">${EMOTE_CATEGORIES.map(cat=>`<button type="button" class="emote-main-category" data-emote-category="${cat.id}"><span>${cat.icon}</span><b>${cat.label}</b><small>문구 ${cat.items.length}개</small></button>`).join('')}</div><div class="emote-footer"><button type="button" class="btn" data-close-emotes>취소</button></div></div></div>`;
+    }
+    return `<div class="modal-back local-modal-back emote-modal-back"><div class="modal card emote-modal"><button type="button" class="modal-close" data-close-emotes aria-label="닫기">×</button><span class="entry-kicker">QUICK CHAT · ${escapeHtml(selected.label)}</span><div class="emote-sub-head"><button type="button" class="emote-back-btn" data-emote-back>← 대항목</button><h2><span>${selected.icon}</span> ${escapeHtml(selected.label)}</h2></div><p>보낼 문구를 하나 선택하세요.</p><div class="emote-sub-options">${selected.items.map(item=>`<button type="button" data-send-emote data-emoji="${escapeHtml(item.emoji)}" data-text="${escapeHtml(item.text)}"><span>${escapeHtml(item.emoji)}</span><b>${escapeHtml(item.text)}</b></button>`).join('')}</div><div class="emote-footer"><button type="button" class="btn" data-close-emotes>취소</button></div></div></div>`;
   }
 
   function renderModal() {
@@ -1494,7 +1604,8 @@
   }
 
   function headerHtml(inGame=false) {
-    return `<header class="header"><div class="brand"><div class="logo"><span>◆</span></div><div><div class="brand-title">ACQUIRE <span class="classic-tag">CLASSIC</span></div><div class="brand-sub">HOTEL EMPIRE · ONLINE BOARD GAME</div></div></div><div class="top-actions"><span class="connection-dot ${net.connected?'online':''}"><i></i>${net.connected?'ONLINE':'CONNECTING'}</span>${net.roomCode?`<span class="badge room-badge">ROOM ${escapeHtml(net.roomCode)}</span>`:''}${inGame?`<span class="badge gold">ROUND ${state.round}</span>`:''}<button type="button" class="header-text-btn" data-open-info="prices" aria-label="주가표 보기">📊 주가표</button>${inGame?'<button type="button" class="header-text-btn" data-open-info="history" aria-label="게임 이력 보기">☷ 기록</button>':''}<button type="button" class="header-icon-btn" data-open-info="rules" aria-label="규칙 보기">?</button><button type="button" class="header-icon-btn" data-open-info="settings" aria-label="설정">⚙</button></div></header>`;
+    const bgmControl=inGame?`<div class="bgm-control"><button type="button" id="bgmToggle" class="header-text-btn bgm-toggle" aria-pressed="${bgm.enabled?'true':'false'}">${bgm.enabled?'🔊 BGM':'🔇 BGM'}</button><label class="bgm-volume" title="BGM 볼륨"><span>♪</span><input id="bgmVolume" type="range" min="0" max="100" step="1" value="${Math.round(bgm.volume*100)}" aria-label="BGM 볼륨"><small id="bgmVolumeValue">${Math.round(bgm.volume*100)}%</small></label></div>`:'';
+    return `<header class="header"><div class="brand"><div class="logo"><span>◆</span></div><div><div class="brand-title">ACQUIRE <span class="classic-tag">CLASSIC</span></div><div class="brand-sub">HOTEL EMPIRE · ONLINE BOARD GAME</div></div></div><div class="top-actions"><span class="connection-dot ${net.connected?'online':''}"><i></i>${net.connected?'ONLINE':'CONNECTING'}</span>${net.roomCode?`<span class="badge room-badge">ROOM ${escapeHtml(net.roomCode)}</span>`:''}${inGame?`<span class="badge gold">ROUND ${state.round}</span>`:''}${bgmControl}<button type="button" class="header-text-btn" data-open-info="prices" aria-label="주가표 보기">📊 주가표</button>${inGame?'<button type="button" class="header-text-btn" data-open-info="history" aria-label="게임 이력 보기">☷ 기록</button>':''}<button type="button" class="header-icon-btn" data-open-info="rules" aria-label="규칙 보기">?</button><button type="button" class="header-icon-btn" data-open-info="settings" aria-label="설정">⚙</button></div></header>`;
   }
 
   function renderInfoModal(){
@@ -1555,6 +1666,14 @@
       ui.settings.reducedMotion=document.getElementById('motionSetting').checked;
       saveUiSettings(); ui.modal=null; render(); toast('화면 설정을 저장했습니다.');
     };
+    const bgmToggle=document.getElementById('bgmToggle');
+    if(bgmToggle) bgmToggle.onclick=toggleBgm;
+    const bgmVolume=document.getElementById('bgmVolume');
+    if(bgmVolume){
+      bgmVolume.oninput=()=>setBgmVolume(Number(bgmVolume.value)/100);
+      bgmVolume.onchange=()=>setBgmVolume(Number(bgmVolume.value)/100);
+    }
+    updateBgmControls();
   }
 
   const _renderLobby=renderLobby, _renderGame=renderGame;
@@ -1563,7 +1682,9 @@
     _renderGame();
     app.insertAdjacentHTML('beforeend', modalUtilityHtml()+renderInfoModal()+renderEmoteModal()+startIntroHtml()+localPlacementModalHtml()+localDiscardModalHtml()+bonusEffectHtml()+drawRevealHtml());
     bindGlobalUi();
-    document.querySelectorAll('[data-close-emotes]').forEach(el=>el.onclick=()=>{ui.emoteMenu=false;render();});
+    document.querySelectorAll('[data-close-emotes]').forEach(el=>el.onclick=()=>{ui.emoteMenu=false;ui.emoteCategory=null;render();});
+    document.querySelectorAll('[data-emote-category]').forEach(el=>el.onclick=()=>{ui.emoteCategory=el.dataset.emoteCategory;render();});
+    document.querySelectorAll('[data-emote-back]').forEach(el=>el.onclick=()=>{ui.emoteCategory=null;render();});
     document.querySelectorAll('[data-send-emote]').forEach(el=>el.onclick=()=>postEmote(el.dataset.emoji,el.dataset.text,'basic'));
     const ok=document.getElementById('confirmPlacement');
     if(ok) ok.onclick=()=>{ const tile=ui.pendingPlacementTile; ui.pendingPlacementTile=null; localDo(()=>placeTile(tile)); };
@@ -1575,8 +1696,11 @@
     if(discardCancel) discardCancel.onclick=()=>{ ui.pendingDiscardTile=null; render(); };
   };
 
-  function render() { state.screen==='lobby'?renderLobby():renderGame(); }
+  function render() { state.screen==='lobby'?renderLobby():renderGame(); syncBgmForScreen(); }
   applyUiSettings();
+  initBgm();
+  document.addEventListener('pointerdown',unlockBgm,{passive:true});
+  document.addEventListener('keydown',unlockBgm,{passive:true});
   render();
   connectNetwork();
   setInterval(tickTurnTimer,250);

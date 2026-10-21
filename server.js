@@ -122,7 +122,7 @@ function safeName(name) {
   return String(name || '').trim().slice(0,12) || '플레이어';
 }
 
-const mime = {'.html':'text/html; charset=utf-8','.js':'text/javascript; charset=utf-8','.css':'text/css; charset=utf-8','.json':'application/json; charset=utf-8','.png':'image/png','.svg':'image/svg+xml'};
+const mime = {'.html':'text/html; charset=utf-8','.js':'text/javascript; charset=utf-8','.css':'text/css; charset=utf-8','.json':'application/json; charset=utf-8','.png':'image/png','.svg':'image/svg+xml','.mp3':'audio/mpeg','.ogg':'audio/ogg'};
 const server = http.createServer((req,res) => {
   const pathname = decodeURIComponent(req.url.split('?')[0]);
   if (pathname === '/healthz') {
