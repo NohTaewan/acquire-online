@@ -210,6 +210,22 @@ wss.on('connection', ws => {
     }
     const room = rooms.get(String(msg.roomCode || ''));
     if (!room || !room.members.some(m=>m.clientId===clientId && !m.left)) return;
+    if (msg.type === 'emote') {
+      const member=room.members.find(m=>m.clientId===clientId && !m.left);
+      if (!member) return;
+      const now=Date.now();
+      const payload={
+        type:'emote', clientId,
+        id:String(msg.id||`e_${now}`).slice(0,80),
+        emoji:String(msg.emoji||'💬').slice(0,16),
+        text:String(msg.text||'').slice(0,40),
+        source:String(msg.source||'basic').slice(0,16),
+        createdAt:now, expiresAt:now+3000
+      };
+      const encoded=JSON.stringify(payload);
+      room.members.forEach(m=>{ if(!m.left){ const c=clients.get(m.clientId); if(c?.ws?.readyState===WebSocket.OPEN)c.ws.send(encoded); } });
+      return;
+    }
     if (msg.type === 'start') {
       if (room.hostId !== clientId) return send(ws,{type:'error',message:'방장만 시작할 수 있습니다.'});
       if (room.members.filter(m=>m.connected && !m.left).length < 2) return send(ws,{type:'error',message:'최소 2명이 필요합니다.'});

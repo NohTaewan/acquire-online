@@ -395,3 +395,61 @@ body::before{content:"";position:fixed;inset:0;pointer-events:none;opacity:.16;b
 .safe-shield{font-size:7px;color:#8de9ff;transform:rotate(45deg);display:inline-block;text-shadow:0 0 5px rgba(141,233,255,.65)}
 .cell.safe-chain-cell .chain-tile-mark{box-shadow:inset 0 1px 0 rgba(255,255,255,.18),0 0 0 1px rgba(126,226,255,.18)}
 @media (max-width:620px){.safe-chain-badge{font-size:6px;padding:2px 4px;right:2px;bottom:2px}}
+
+/* v18 final settlement detail */
+.results-modal-wide{width:min(1180px,94vw);max-width:1180px}
+.results-layout{display:grid;grid-template-columns:minmax(310px,.82fr) minmax(480px,1.35fr);gap:20px;align-items:start}
+.results-ranking{min-width:0}.settlement-panel{min-width:0;border-left:1px solid rgba(255,255,255,.09);padding-left:20px}
+.settlement-title{display:flex;justify-content:space-between;gap:12px;align-items:end;margin-bottom:10px}.settlement-title h3{margin:3px 0 0;font-size:20px}.settlement-title small{color:var(--muted,#8fa4b8)}
+.settlement-list{display:grid;gap:10px;max-height:580px;overflow:auto;padding-right:4px}
+.settlement-player{border:1px solid rgba(255,255,255,.09);border-radius:14px;background:rgba(7,17,29,.7);overflow:hidden}.settlement-player.winner{border-color:rgba(246,204,93,.48);box-shadow:inset 0 0 0 1px rgba(246,204,93,.08)}
+.settlement-player>header{display:flex;justify-content:space-between;gap:12px;align-items:center;padding:12px 14px;background:rgba(255,255,255,.035)}.settlement-player>header>div{display:flex;gap:8px;align-items:center;min-width:0}.settlement-player>header b{font-size:16px}.settlement-player>header small{color:var(--muted,#8fa4b8)}.settlement-player>header>strong{font-size:18px;color:#f5d773;white-space:nowrap}
+.settle-order{display:inline-grid;place-items:center;min-width:30px;height:24px;padding:0 7px;border-radius:999px;background:rgba(255,255,255,.08);font-size:11px;font-weight:900;color:#bfd1e1}
+.settle-summary{display:flex;flex-wrap:wrap;gap:6px;padding:9px 14px;border-top:1px solid rgba(255,255,255,.05);border-bottom:1px solid rgba(255,255,255,.05)}.settle-summary span{font-size:11px;color:#b4c4d2;background:rgba(255,255,255,.04);padding:4px 7px;border-radius:7px}
+.settlement-player section{padding:10px 14px}.settlement-player section+section{padding-top:2px}.settlement-player h4{font-size:12px;color:#9fb2c3;margin:0 0 6px}.settle-line{display:flex;justify-content:space-between;gap:10px;align-items:center;padding:4px 0;font-size:12px}.settle-line span{min-width:0}.settle-line strong{white-space:nowrap;color:#dce9f4}.settle-dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--sc);margin-right:6px;vertical-align:1px}.settle-empty{font-size:11px;color:#71889c;padding:3px 0}.settle-worthless{font-size:11px;color:#8297a9;margin-top:5px}
+.settlement-player>footer{display:grid;grid-template-columns:auto 1fr auto;gap:8px;align-items:center;padding:10px 14px;border-top:1px solid rgba(255,255,255,.07);background:rgba(255,255,255,.025);font-size:11px}.settlement-player>footer>b{font-weight:600;color:#94aabd;text-align:right}.settlement-player>footer>strong{color:#f5d773;font-size:13px;white-space:nowrap}.bonus-details{margin-top:16px}
+@media(max-width:900px){.results-modal-wide{width:min(96vw,720px)}.results-layout{grid-template-columns:1fr}.settlement-panel{border-left:0;border-top:1px solid rgba(255,255,255,.09);padding-left:0;padding-top:18px}.settlement-list{max-height:none}.settlement-title{align-items:center}}
+@media(max-width:520px){.settlement-player>footer{grid-template-columns:1fr auto}.settlement-player>footer>b{display:none}.settlement-title small{display:none}.settle-line{align-items:flex-start}.results-modal-wide{width:96vw}}
+
+/* v19 · 4-second merger settlement presentation */
+.merger-brief-back{z-index:325;background:rgba(2,9,16,.78);backdrop-filter:blur(5px)}
+.merger-brief-modal{width:min(620px,94vw);padding:20px;border-color:color-mix(in srgb,var(--mbc) 58%,#fff 12%);background:linear-gradient(155deg,color-mix(in srgb,var(--mbc) 12%,#0a1f31),#071521 58%,color-mix(in srgb,var(--msc) 8%,#071521));box-shadow:0 24px 85px rgba(0,0,0,.58),0 0 38px color-mix(in srgb,var(--mbc) 15%,transparent);overflow:hidden}
+.merger-brief-top{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.merger-brief-count{font-size:12px;font-weight:1000;color:#ffe18d;background:#3a2a0f;border:1px solid #806123;border-radius:999px;padding:5px 9px;min-width:44px;text-align:center}
+.merger-brief-modal h2{margin:7px 0 9px;font-size:22px}
+.merger-brief-explain{margin:0 0 13px;color:#b9ccda;font-size:12px;line-height:1.55}
+.merger-flow-mini{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:10px;padding:10px;border:1px solid #24465e;border-radius:13px;background:#071827;margin-bottom:10px}
+.merger-flow-mini>div{display:grid;grid-template-columns:12px 1fr;column-gap:7px;align-items:center;min-width:0}.merger-flow-mini>div span{width:10px;height:10px;border-radius:50%;background:var(--dot);box-shadow:0 0 13px color-mix(in srgb,var(--dot) 45%,transparent)}.merger-flow-mini>div b{font-size:13px}.merger-flow-mini>div small{grid-column:2;color:#829fb2;font-size:10px}.merger-flow-mini>i{font-style:normal;color:#e9c661;font-size:20px;font-weight:1000}
+.merger-bonus-levels{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px}.merger-bonus-levels>div{padding:9px 10px;border:1px solid rgba(111,154,183,.22);border-radius:11px;background:#091b2a;display:flex;align-items:center;justify-content:space-between;gap:8px}.merger-bonus-levels small{font-size:10px;color:#96afc0}.merger-bonus-levels strong{font-size:15px;color:#ffd978}
+.merger-brief-payouts{border:1px solid rgba(96,210,151,.22);border-radius:12px;background:rgba(8,31,27,.68);padding:9px 10px}.merger-brief-payouts h3{font-size:11px;margin:0 0 5px;color:#9de8bd}.merger-brief-payout{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:7px 2px;border-top:1px solid rgba(119,183,151,.12)}.merger-brief-payout:first-of-type{border-top:0}.merger-brief-payout>div{display:flex;align-items:baseline;gap:7px;min-width:0}.merger-brief-payout b{font-size:12px}.merger-brief-payout span{color:#8eac9e;font-size:9px}.merger-brief-payout strong{font-size:17px;color:#73f0ab;text-shadow:0 0 18px rgba(73,226,141,.25);animation:mergerMoneyPop .8s cubic-bezier(.2,.85,.25,1) both}.merger-brief-none{padding:8px 0;color:#89a2b2;font-size:11px}
+.merger-brief-foot{display:flex;justify-content:space-between;gap:10px;margin-top:9px;color:#7694a7;font-size:9px}.merger-brief-foot b{color:#d9b94f}
+.merger-brief-progress{height:4px;border-radius:999px;background:#10293c;overflow:hidden;margin-top:7px}.merger-brief-progress i{display:block;height:100%;width:100%;transform-origin:left;background:linear-gradient(90deg,var(--mbc),#f1ca5c);animation:mergerBriefProgress 4s linear forwards}
+.player-card.bonus-receiving{position:relative;border-color:#67d99c!important;box-shadow:0 0 0 2px rgba(79,215,143,.18) inset,0 0 22px rgba(67,210,137,.14)!important;animation:bonusPlayerPulse 1.2s ease-in-out 2}
+.player-card.bonus-receiving .player-meta{position:relative}.player-card.bonus-receiving .cash{color:#8ff0b8;text-shadow:0 0 12px rgba(76,221,141,.28)}
+.cash-gain-float{position:absolute;right:0;top:-11px;color:#73f0ab;font-size:11px;font-weight:1000;pointer-events:none;animation:cashGainFloat 2.1s cubic-bezier(.2,.75,.2,1) both}
+@keyframes mergerBriefProgress{from{transform:scaleX(1)}to{transform:scaleX(0)}}
+@keyframes mergerMoneyPop{0%{opacity:0;transform:translateY(8px) scale(.92)}55%{opacity:1;transform:translateY(-2px) scale(1.08)}100%{opacity:1;transform:none}}
+@keyframes bonusPlayerPulse{0%,100%{transform:translateZ(0)}50%{transform:translateY(-2px)}}
+@keyframes cashGainFloat{0%{opacity:0;transform:translateY(8px) scale(.9)}18%{opacity:1;transform:translateY(0) scale(1.06)}75%{opacity:1;transform:translateY(-12px)}100%{opacity:0;transform:translateY(-18px)}}
+.reduced-motion .merger-brief-progress i,.reduced-motion .merger-brief-payout strong,.reduced-motion .player-card.bonus-receiving,.reduced-motion .cash-gain-float{animation:none!important}
+@media(max-width:760px){.merger-brief-modal{padding:15px}.merger-brief-modal h2{font-size:18px}.merger-bonus-levels{grid-template-columns:1fr}.merger-brief-payout>div{display:grid;gap:1px}.merger-brief-explain{font-size:11px}}
+
+/* v20 · social emotes */
+.player-card{position:relative;overflow:visible}
+.player-card.emote-clickable{cursor:pointer}
+.player-card.emote-clickable:focus-visible{outline:2px solid #58c9ff;outline-offset:2px}
+.emote-hint{margin-left:6px;font-size:10px;color:#7eb6d5;white-space:nowrap}
+.player-emote-bubble{position:absolute;left:50%;bottom:calc(100% + 9px);transform:translateX(-50%);z-index:35;display:flex;align-items:center;gap:7px;min-width:max-content;max-width:220px;padding:9px 12px;border-radius:14px;background:#f7fbff;color:#102132;border:1px solid #d6e7f3;box-shadow:0 10px 28px rgba(0,0,0,.28);animation:emotePop .22s ease-out}
+.player-emote-bubble:after{content:"";position:absolute;top:100%;left:50%;margin-left:-7px;border:7px solid transparent;border-top-color:#f7fbff}
+.player-emote-bubble span{font-size:22px;line-height:1}.player-emote-bubble b{font-size:13px;line-height:1.25;white-space:nowrap}
+.quick-reaction{position:absolute;right:8px;top:-14px;z-index:30;border:1px solid #e2bb5b;background:linear-gradient(180deg,#493813,#2d220d);color:#ffe9a8;border-radius:999px;padding:6px 9px;font-size:11px;font-weight:900;box-shadow:0 7px 18px rgba(0,0,0,.25);cursor:pointer;animation:quickPulse 1.1s ease-in-out infinite}
+.quick-reaction span{margin-right:4px}
+.emote-modal-back{z-index:1200}.emote-modal{width:min(760px,calc(100% - 24px));max-height:min(82vh,760px);overflow:auto}
+.emote-category-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:14px}
+.emote-category{border:1px solid #1c405b;background:#071a2a;border-radius:14px;padding:11px}.emote-category h3{display:flex;align-items:center;gap:7px;margin:0 0 9px;font-size:13px}.emote-category h3 span{font-size:19px}
+.emote-options{display:grid;grid-template-columns:1fr 1fr;gap:7px}.emote-options button{min-height:48px;border:1px solid #27506b;background:#0a2438;color:#eaf7ff;border-radius:10px;padding:7px 8px;text-align:left;display:flex;align-items:center;gap:7px;cursor:pointer}.emote-options button:hover{border-color:#58c9ff;background:#0d2d45}.emote-options button span{font-size:20px;flex:0 0 auto}.emote-options button b{font-size:11px;line-height:1.25}
+@keyframes emotePop{from{opacity:0;transform:translateX(-50%) translateY(8px) scale(.92)}to{opacity:1;transform:translateX(-50%) translateY(0) scale(1)}}
+@keyframes quickPulse{0%,100%{transform:translateY(0)}50%{transform:translateY(-2px)}}
+.reduced-motion .player-emote-bubble,.reduced-motion .quick-reaction{animation:none!important}
+@media(max-width:700px){.emote-category-list{grid-template-columns:1fr}.emote-options{grid-template-columns:1fr 1fr}.player-emote-bubble{max-width:180px}.emote-hint{display:none}}
+@media(max-width:390px){.emote-options{grid-template-columns:1fr}.player-emote-bubble{font-size:12px}.quick-reaction{right:5px;top:-12px;font-size:10px;padding:5px 7px}}
