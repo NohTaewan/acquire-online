@@ -1563,7 +1563,7 @@
       </div></div>`;
     }
     if(m.type==='chooseChain') {
-      if(!canControlCurrent()) return `<div class="modal-back"><div class="modal card"><h2>⏳ ${escapeHtml(currentPlayer().name)} 선택 대기</h2><p>${escapeHtml(currentPlayer().name)}님이 새 호텔 체인을 설립하는 중입니다.</p></div></div>`;
+      if(!canControlCurrent()) return '';
       return `<div class="modal-back"><div class="modal card"><h2>🏗️ 새 체인 창립</h2><p>설립할 호텔 체인을 선택하세요. 은행에 주식이 남아 있으면 창립자 주식 1주를 무료로 받습니다.</p><div class="choice-grid">${inactiveChains().map(id=>`<button class="chain-choice" data-found="${id}" style="--c:${chainColor(id)}"><b>${chainName(id)}</b><small>기준가 ${money(CHAIN[id].base)}</small></button>`).join('')}</div></div></div>`;
     }
     if(m.type==='chooseSurvivor') {
@@ -1655,6 +1655,7 @@
 
   function modalUtilityHtml(){
     if(state.screen!=='game' || (!state.modal && !ui.pendingPlacementTile && !ui.pendingDiscardTile)) return '';
+    if(state.modal?.type==='chooseChain' && !canControlCurrent()) return '';
     return `<button type="button" class="modal-price-shortcut" data-open-info="prices">📊 주가표</button>`;
   }
 
