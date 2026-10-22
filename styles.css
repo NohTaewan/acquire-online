@@ -580,3 +580,68 @@ body.game-screen-active{overflow:hidden}
 }
 
 @keyframes mobileSheetUp{from{opacity:.2;transform:translateY(18px)}to{opacity:1;transform:translateY(0)}}
+
+/* v27 · board fit + mobile player strip / bottom self info */
+.mobile-player-strip,.mobile-my-info{display:none}
+.one-screen-game .board-wrap{container-type:size}
+@supports (width: 1cqh){
+  .one-screen-game .board{width:min(100%,calc(100cqh * 1.54));max-width:100%;height:auto}
+}
+.more-menu-list{display:grid;gap:8px;margin-top:12px}
+.more-menu-item{width:100%;display:grid;grid-template-columns:38px 1fr;gap:10px;align-items:center;text-align:left;border:1px solid #294d68;border-radius:12px;background:#081c2b;color:#e3f1f8;padding:10px 12px;cursor:pointer}
+.more-menu-item>span{display:grid;place-items:center;width:34px;height:34px;border-radius:9px;background:#0f3148;font-size:18px;font-weight:900}
+.more-menu-item b{display:block;font-size:12px}.more-menu-item small{display:block;color:#88a5b7;font-size:9px;margin-top:2px}.more-menu-item.danger{border-color:#70404a;background:#27171d}.more-menu-item.danger>span{background:#48202a;color:#ffb5c2}
+
+@media(min-width:901px) and (max-width:1280px){
+  .one-screen-game .game-layout{grid-template-columns:190px minmax(0,1fr) 245px}
+  .one-screen-game{padding-left:8px;padding-right:8px}
+  .one-screen-game .board-card{padding:6px}
+}
+
+@media(max-width:900px){
+  /* 모바일 헤더는 BGM과 더보기만 남겨 게임 영역 확보 */
+  .one-screen-game .top-actions>[data-open-info="prices"],
+  .one-screen-game .top-actions>[data-open-info="history"],
+  .one-screen-game .top-actions>[data-open-info="rules"],
+  .one-screen-game .top-actions>[data-open-info="settings"]{display:none!important}
+  .one-screen-game .more-menu-btn{display:grid!important}
+  .modal-price-shortcut{display:none!important}
+
+  .one-screen-game .center-stack{grid-template-rows:auto auto minmax(0,1fr) auto;gap:4px}
+  .one-screen-game .hand-card{display:none!important}
+
+  .mobile-player-strip{display:grid;grid-template-columns:minmax(0,1fr) 74px;gap:4px;min-height:55px}
+  .mobile-player-strip-scroll{display:flex;gap:4px;min-width:0;overflow-x:auto;overflow-y:hidden;scrollbar-width:none;overscroll-behavior-x:contain;scroll-snap-type:x proximity;padding-bottom:1px}
+  .mobile-player-strip-scroll::-webkit-scrollbar{display:none}
+  .mobile-player-chip{scroll-snap-align:start;flex:0 0 122px;min-width:122px;min-height:52px;display:grid;grid-template-columns:1fr auto;grid-template-rows:auto 1fr;gap:2px 5px;align-items:center;border:1px solid #294d68;border-radius:9px;background:linear-gradient(180deg,#0a2435,#071a28);color:#e5f3fa;padding:5px 6px;text-align:left;overflow:hidden}
+  .mobile-player-chip.active{border-color:#d8b357;box-shadow:inset 0 0 0 1px rgba(216,179,87,.24)}
+  .mobile-player-chip.me{border-left:3px solid var(--player)}
+  .mobile-player-chip-name{min-width:0;font-size:8px;font-weight:900;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.mobile-player-chip-name i{display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--player);margin-right:4px}
+  .mobile-player-chip>strong{font-size:9px;color:#f2d67d;white-space:nowrap}
+  .mobile-player-chip-stocks{grid-column:1/-1;display:flex;gap:2px;align-items:center;min-width:0;overflow:hidden;white-space:nowrap}
+  .mobile-stock-dot{display:inline-flex;align-items:center;gap:1px;font-size:6.5px;color:#cfe4ef;background:#061723;border-radius:4px;padding:1px 2px;line-height:1.2}.mobile-stock-dot i{width:5px;height:5px;border-radius:50%;background:var(--c);flex:0 0 5px}.mobile-stock-dot b{font-size:6px;color:var(--c)}.mobile-stock-none{font-size:6.5px;color:#66879a}
+  .mobile-player-strip-actions{display:grid;grid-template-columns:1fr 1fr;gap:3px}
+  .mobile-player-strip-actions button{min-width:0;border:1px solid #294d68;border-radius:9px;background:#081c2b;color:#d8edf8;font-size:16px;font-weight:900;padding:2px;display:flex;flex-direction:column;align-items:center;justify-content:center}.mobile-player-strip-actions button span{font-size:6.5px;color:#8fa9b9;margin-top:1px}
+
+  .mobile-my-info{display:block;border:1px solid #294d68;border-radius:10px;background:linear-gradient(180deg,#0a2233,#071925);padding:5px 7px;min-height:58px}
+  .mobile-my-info-head{display:flex;align-items:center;gap:8px;min-width:0;margin-bottom:4px}.mobile-my-info-head>div:first-child{display:flex;align-items:baseline;gap:5px;white-space:nowrap}.mobile-my-info-head small{font-size:6.5px;color:#7898aa}.mobile-my-info-head strong{font-size:9px;color:#f1d77e}.mobile-my-stocks{display:flex;gap:2px;min-width:0;overflow:hidden;white-space:nowrap;margin-left:auto}
+  .mobile-hand-info{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:3px}
+  .mobile-hand-chip{min-width:0;min-height:31px;border:1px solid #28465b;border-radius:6px;background:#081b29;color:#dceaf2;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:2px;font:inherit}.mobile-hand-chip b{font-size:9px}.mobile-hand-chip small{font-size:5.8px;color:#7899aa;white-space:nowrap}.mobile-hand-chip.temporary{opacity:.48}.mobile-hand-chip.permanent{border-color:#9c4b56;background:#321921;color:#ffd3da;cursor:pointer}.mobile-hand-chip.permanent small{color:#ff9eac}
+
+  /* 주식/플레이어 시트는 필요할 때만; 메인 플레이어 정보는 위 스트립에서 즉시 확인 */
+  .one-screen-game .side-panel.mobile-info-panel{display:none!important}
+
+  .mobile-action-bar{grid-template-columns:minmax(118px,1fr) minmax(100px,.78fr) auto}
+  .mobile-action-state small{font-size:7px}.mobile-action-state strong{font-size:9px}
+  .mobile-action-stock{min-height:42px!important;background:linear-gradient(180deg,#173b52,#0b283a)!important;border-color:#4d7a94!important;color:#f0fbff!important;display:flex!important;align-items:center!important;justify-content:center!important;gap:4px!important;font-size:14px!important}.mobile-action-stock b{font-size:12px}.mobile-action-stock small{font-size:6.5px;color:#9bc2d6;display:block}
+
+  /* v25의 내 현금 도구막대는 더 이상 사용하지 않음 */
+  .mobile-game-toolbar{display:none!important}
+}
+
+@media(max-width:430px){
+  .mobile-player-strip{grid-template-columns:minmax(0,1fr) 68px}.mobile-player-chip{flex-basis:112px;min-width:112px}
+  .mobile-action-bar{grid-template-columns:minmax(106px,1fr) minmax(92px,.75fr) auto}
+  .mobile-action-stock{font-size:12px!important}.mobile-action-stock b{font-size:11px}
+  .mobile-my-info{padding-left:5px;padding-right:5px}.mobile-hand-info{gap:2px}.mobile-hand-chip b{font-size:8.5px}.mobile-hand-chip small{font-size:5.3px}
+}

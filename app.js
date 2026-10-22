@@ -98,6 +98,7 @@
     emoteCategory: null,
     mobilePanel: null,
     autoStockSheetKey: '',
+    mobileMarketScrollTop: 0,
     dismissedReactionIds: {},
     settings: (() => {
       try { return Object.assign({boardScale:100,showHints:true,reducedMotion:false}, JSON.parse(localStorage.getItem('acquireUiSettings')||'{}')); }
@@ -288,9 +289,14 @@
     state.toast='';
     ui.localSelectedTile=null; ui.pendingPlacementTile=null; ui.pendingDiscardTile=null; ui.drawReveal=null; ui.bonusEffect=null; ui.mergerBoardPeek=false;
     if(previousPhase!==state.phase){
-      if(state.phase==='BUY_STOCK' && canControlCurrent()) ui.mobilePanel='market';
-      else ui.mobilePanel=null;
-      if(state.phase!=='BUY_STOCK') ui.autoStockSheetKey='';
+      if(state.phase==='BUY_STOCK' && canControlCurrent()) {
+        ui.mobilePanel='market';
+        ui.mobileMarketScrollTop=0;
+      } else ui.mobilePanel=null;
+      if(state.phase!=='BUY_STOCK') {
+        ui.autoStockSheetKey='';
+        ui.mobileMarketScrollTop=0;
+      }
     }
     if(state.lastBonusEvent?.id && state.lastBonusEvent.id!==previousBonusId) showBonusEffectLocal(state.lastBonusEvent);
     const enteringPlayableGame=(wasLobby && state.screen==='game' && !['SETUP_PICK','SETUP_REVEAL'].includes(state.phase));
@@ -1320,6 +1326,21 @@
     return tags.length?tags.join(''):'<span class="muted-mini">보유 주식 없음</span>';
   }
 
+  function compactPlayerStocks(p) {
+    const tags=HOTEL_CHAINS.filter(h=>(p.stocks?.[h.id]||0)>0).map(h=>`<span class="mobile-stock-dot" style="--c:${h.color}" title="${escapeHtml(h.name)} ${p.stocks[h.id]}주"><i></i><b>${escapeHtml(h.mark)}</b>${p.stocks[h.id]}</span>`);
+    return tags.length?tags.join(''):'<span class="mobile-stock-none">주식 없음</span>';
+  }
+
+  function mobilePlayerStripHtml() {
+    return `<div class="mobile-player-strip"><div class="mobile-player-strip-scroll">${state.players.map((p,i)=>{const mine=p.clientId===net.clientId;return `<button type="button" class="mobile-player-chip ${i===state.currentPlayer?'active':''} ${mine?'me':''}" ${mine?'data-open-emotes="1"':''} style="--player:${p.profileColor||seatColor(i)}"><span class="mobile-player-chip-name"><i></i>${escapeHtml(p.name)}${i===state.currentPlayer?' ◀':''}</span><strong>${money(p.cash)}</strong><span class="mobile-player-chip-stocks">${compactPlayerStocks(p)}</span></button>`}).join('')}</div><div class="mobile-player-strip-actions"><button type="button" data-mobile-emote-open="1" aria-label="반응 보내기">💬<span>반응</span></button><button type="button" data-open-info="more" aria-label="더보기">⋯<span>더보기</span></button></div></div>`;
+  }
+
+  function mobileMyInfoHtml(mine, hand, myTurn) {
+    if(mine<0) return '';
+    const p=state.players[mine];
+    return `<section class="mobile-my-info"><div class="mobile-my-info-head"><div><small>내 정보</small><strong>${escapeHtml(p.name)} · ${money(p.cash)}</strong></div><div class="mobile-my-stocks">${compactPlayerStocks(p)}</div></div><div class="mobile-hand-info">${hand.map(t=>{const pl=playability(t);const permanent=myTurn&&state.phase==='PLACE_TILE'&&pl.kind==='permanent';return permanent?`<button type="button" class="mobile-hand-chip permanent" data-mobile-discard="${t}"><b>${t}</b><small>폐기</small></button>`:`<span class="mobile-hand-chip ${!pl.ok?pl.kind:''}"><b>${t}</b><small>${pl.ok?'보유':pl.kind==='temporary'?'일시 불가':'영구 불가'}</small></span>`}).join('')}</div></section>`;
+  }
+
   function tileCell(tile) {
     const v=state.board[tile]; const placed=!!v; const selected=ui.localSelectedTile===tile;
     const discarded=state.discardedTiles?.[tile]||null;
@@ -1408,12 +1429,16 @@
 
   function renderGame() {
     document.body.classList.add('game-screen-active');
+    // 렌더링으로 Bottom Sheet DOM이 교체되기 전에 현재 스크롤 위치를 보존한다.
+    const previousMarketSheet=document.querySelector('.market.mobile-info-panel.mobile-open');
+    if(previousMarketSheet && ui.mobilePanel==='market') ui.mobileMarketScrollTop=previousMarketSheet.scrollTop;
     const cp=currentPlayer(); const mine=myPlayerIndex(); const hand=(mine>=0?state.hands[mine]:[])||[]; const myTurn=canControlCurrent(); const buyCount=pendingBuyCount(); const buyCost=pendingBuyCost();
     // 모바일에서는 주식 매수 단계 진입 시 내 턴에 한해 Bottom Sheet를 딱 한 번 자동으로 연다.
     const stockSheetKey=`${state.turnToken}:${state.currentPlayer}`;
     if(state.phase==='BUY_STOCK' && myTurn && ui.autoStockSheetKey!==stockSheetKey){
       ui.mobilePanel='market';
       ui.autoStockSheetKey=stockSheetKey;
+      ui.mobileMarketScrollTop=0;
     }
     if(state.phase!=='BUY_STOCK' && ui.autoStockSheetKey) ui.autoStockSheetKey='';
     app.innerHTML=`<div class="app-shell one-screen-game">${headerHtml(true)}
@@ -1425,10 +1450,11 @@
 
         <main class="center-stack">
           <section class="card turn-banner"><div><div class="big">${escapeHtml(cp.name)}님의 턴</div><div class="small">${phaseLabel()}</div></div><div class="status-row"><span class="turn-timer ${Number(state.turnLimitSeconds)===0?'unlimited':''}">⏱ <b id="turnTimer">${turnTimerText()}</b></span><span class="badge green">LIVE MATCH</span><span class="badge gold">ROUND ${state.round}</span>${canEndGame()?'<span class="badge danger-badge">종료 가능</span>':''}</div>${currentDisconnectNoticeHtml()}</section>
-          <div class="mobile-game-toolbar"><div class="mobile-my-cash"><small>내 현금</small><strong>${money(mine>=0?state.players[mine].cash:0)}</strong></div><button type="button" data-mobile-panel="players">👥<span>플레이어</span></button><button type="button" data-mobile-panel="market">📈<span>주식</span></button><button type="button" data-mobile-emote-open="1">💬<span>반응</span></button><button type="button" data-open-info="prices">📊<span>주가표</span></button></div>
+          ${mobilePlayerStripHtml()}
           <section class="card board-card"><div class="board-head"><h2>◆ 도시 보드 <span style="font-size:11px;color:var(--muted);font-weight:700">CITY GRID</span></h2><div class="status-row"><span class="badge">108 ZONES · 12×9</span><span class="badge">배치 ${Object.keys(state.board).length}</span><span class="badge discard-badge">폐기 ${Object.keys(state.discardedTiles||{}).length}</span></div></div><div class="board-wrap"><div class="board">${ALL_TILES.map(tileCell).join('')}</div></div>
             <div class="legend"><span>▫️ 독립 타일</span><span>✕ 폐기된 타일</span>${HOTEL_CHAINS.map(h=>`<span class="legend-chain"><b class="mini-chain-logo" style="--hc:${h.color}">${chainMarkHtml(h.id)}</b> ${h.name}</span>`).join('')}</div>
           </section>
+          ${mobileMyInfoHtml(mine,hand,myTurn)}
           <section class="card hand-card"><div class="section-title"><span>🧩 내 타일${mine>=0?' · '+escapeHtml(state.players[mine].name):''}</span><span class="badge gold">${hand.length}장</span></div><div class="hand">
             ${hand.map(t=>{const pl=playability(t);const canDiscard=myTurn&&state.phase==='PLACE_TILE'&&pl.kind==='permanent';const disabled=!myTurn||state.phase!=='PLACE_TILE'||(pl.kind==='temporary');return `<button class="hand-tile ${ui.localSelectedTile===t?'selected':''} ${!pl.ok?pl.kind:''} ${canDiscard?'discardable':''}" data-hand="${t}" ${disabled?'disabled':''}>${t}<div class="tile-state">${pl.ok?'선택':pl.kind==='permanent'?'폐기 가능':'일시 불가'}</div></button>`}).join('')}
           </div><div class="help game-help">${helpText()}</div></section>
@@ -1437,26 +1463,31 @@
         <aside class="card market mobile-info-panel ${ui.mobilePanel==='market'?'mobile-open':''}"><div class="mobile-sheet-handle"></div><div class="section-title"><span>📈 주식 매수</span><span class="sheet-title-actions"><span class="badge">최대 3주</span><button type="button" class="mobile-sheet-close" data-close-mobile-panel aria-label="닫기">×</button></span></div>
           <div class="market-summary"><div style="color:var(--muted);font-size:12px">선택 ${buyCount}/3주 · 총 구매 금액</div><div class="total">${money(buyCost)}</div><div style="color:var(--muted);font-size:11px">보유 현금 ${money(cp.cash)}</div></div>
           <div class="hotel-list">${HOTEL_CHAINS.map(h=>hotelMarketHtml(h)).join('')}</div>
-          <div class="market-actions"><button class="btn primary" id="confirmBuy" ${!myTurn||state.phase!=='BUY_STOCK'?'disabled':''}>${buyCount?'선택 주식 구매 확정':'주식 구매 없이 진행'}</button><button class="btn primary" id="endTurn" disabled>팝업에서 타일 뽑기</button><button class="btn gold" id="declareEnd" ${!myTurn||!canEndGame()||!['BUY_STOCK','END_TURN'].includes(state.phase)?'disabled':''}>🏁 게임 종료 선언</button><button class="btn danger" id="resetGame">방 나가기</button></div>
+          <div class="market-actions"><button class="btn primary" id="confirmBuy" ${!myTurn||state.phase!=='BUY_STOCK'?'disabled':''}>${buyCount?'선택 주식 구매 확정':'주식 구매 없이 진행'}</button><button class="btn primary" id="endTurn" disabled>팝업에서 타일 뽑기</button><button class="btn gold" id="declareEnd" ${!myTurn||!canEndGame()||!['BUY_STOCK','END_TURN'].includes(state.phase)?'disabled':''}>🏁 게임 종료 선언</button></div>
           <div class="log-box"><div class="section-title"><span>게임 로그</span><button type="button" class="mini-link-btn" data-open-info="history">전체 이력</button></div>${state.logs.slice(0,12).map(x=>`<div class="log-line">${escapeHtml(x)}</div>`).join('')||'<div class="log-line">게임 기록이 여기에 표시됩니다.</div>'}</div>
         </aside>
       </div>
       <div class="mobile-action-bar">
-        <div class="mobile-action-state"><small>${myTurn?'내 차례':'대기 중'}</small><strong>${phaseLabel()}</strong></div>
-        ${state.phase==='BUY_STOCK'&&myTurn?`<button type="button" class="mobile-action-secondary" data-mobile-panel="market">📈 ${buyCount}/3 · ${money(buyCost)}</button><button type="button" class="mobile-action-primary" id="mobileConfirmBuy">${buyCount?'매수 확정':'매수 없이 진행'}</button>`:''}
-        ${state.phase==='PLACE_TILE'&&myTurn?`<button type="button" class="mobile-action-primary" data-mobile-hand-focus>🧩 타일 선택</button>`:''}
+        <div class="mobile-action-state"><small>${myTurn?'내 차례':`${escapeHtml(cp.name)}님 진행 중`}</small><strong>${phaseLabel()}</strong></div>
+        <button type="button" class="mobile-action-stock" data-mobile-panel="market">📈 <b>주식</b>${state.phase==='BUY_STOCK'&&myTurn?`<small>${buyCount}/3 · ${money(buyCost)}</small>`:''}</button>
+        ${state.phase==='BUY_STOCK'&&myTurn?`<button type="button" class="mobile-action-primary" id="mobileConfirmBuy">${buyCount?'매수 확정':'매수 없이 진행'}</button>`:''}
         ${['CHOOSE_SURVIVOR','CHOOSE_DEFUNCT','MERGER_DECISION','MERGER_BONUS'].includes(state.phase)?`<button type="button" class="mobile-action-primary" data-mobile-merger-board>🗺️ 보드 보기</button>`:''}
-        ${state.phase==='DRAW_TILE'&&myTurn?`<button type="button" class="mobile-action-primary" disabled>🎴 타일을 뽑으세요</button>`:''}
-        ${!myTurn?`<button type="button" class="mobile-action-primary" disabled>${escapeHtml(cp.name)}님 진행 중</button>`:''}
+        ${state.phase==='DRAW_TILE'&&myTurn?`<button type="button" class="mobile-action-primary" disabled>🎴 타일 뽑기</button>`:''}
       </div>
     </div>${mobileEmoteToastHtml()}${renderModal()}${mergerBoardPeekHtml()}${state.toast?`<div class="toast">${state.toast}</div>`:''}`;
 
-    document.querySelectorAll('[data-mobile-panel]').forEach(el=>el.onclick=()=>{ui.mobilePanel=el.dataset.mobilePanel;render();});
+    document.querySelectorAll('[data-mobile-panel]').forEach(el=>el.onclick=()=>{
+      const nextPanel=el.dataset.mobilePanel;
+      if(nextPanel==='market' && ui.mobilePanel!=='market') ui.mobileMarketScrollTop=0;
+      ui.mobilePanel=nextPanel;
+      render();
+    });
     document.querySelectorAll('[data-close-mobile-panel]').forEach(el=>el.onclick=()=>{ui.mobilePanel=null;render();});
     document.querySelectorAll('[data-mobile-emote-open]').forEach(el=>el.onclick=()=>{ui.emoteMenu=true;ui.emoteCategory=null;render();});
     const mobileBuy=document.getElementById('mobileConfirmBuy'); if(mobileBuy) mobileBuy.onclick=()=>localDo(confirmBuy);
     document.querySelectorAll('[data-mobile-hand-focus]').forEach(el=>el.onclick=()=>{ui.mobilePanel=null;render();const target=document.querySelector('.hand-card');target?.scrollIntoView?.({block:'nearest',behavior:'smooth'});});
     document.querySelectorAll('[data-mobile-merger-board]').forEach(el=>el.onclick=()=>{ui.mergerBoardPeek=true;render();});
+    document.querySelectorAll('[data-mobile-discard]').forEach(el=>el.onclick=()=>{if(!canControlCurrent()||state.phase!=='PLACE_TILE')return;ui.pendingDiscardTile=el.dataset.mobileDiscard;render();});
     document.querySelectorAll('[data-open-emotes]').forEach(el=>{
       const open=()=>{ui.emoteMenu=true;ui.emoteCategory=null;render();};
       el.onclick=(ev)=>{ if(ev.target.closest('button')) return; open(); };
@@ -1484,7 +1515,17 @@
     document.getElementById('confirmBuy').onclick=()=>localDo(confirmBuy);
     document.getElementById('endTurn').onclick=()=>localDo(endTurn);
     document.getElementById('declareEnd').onclick=()=>localDo(declareEndGame);
-    document.getElementById('resetGame').onclick=()=>{if(confirm('방에서 나갈까요?')){sendNet({type:'leave'});net.roomCode='';localStorage.removeItem('acquireRoomCode');state.screen='lobby';render();}};
+    const resetGame=document.getElementById('resetGame'); if(resetGame) resetGame.onclick=()=>{if(confirm('방에서 나갈까요?')){sendNet({type:'leave'});net.roomCode='';localStorage.removeItem('acquireRoomCode');state.screen='lobby';render();}};
+
+    // 모바일 주식 Bottom Sheet는 + / - 클릭으로 재렌더링되어도 같은 위치를 유지한다.
+    const marketSheet=document.querySelector('.market.mobile-info-panel.mobile-open');
+    if(marketSheet && ui.mobilePanel==='market') {
+      marketSheet.scrollTop=Number(ui.mobileMarketScrollTop)||0;
+      marketSheet.addEventListener('scroll',()=>{ui.mobileMarketScrollTop=marketSheet.scrollTop;},{passive:true});
+      requestAnimationFrame(()=>{
+        if(document.body.contains(marketSheet)) marketSheet.scrollTop=Number(ui.mobileMarketScrollTop)||0;
+      });
+    }
     animateBonusCashCounters();
     bindModal();
   }
@@ -1644,7 +1685,7 @@
 
   function headerHtml(inGame=false) {
     const bgmControl=inGame?`<div class="bgm-control"><button type="button" id="bgmToggle" class="header-text-btn bgm-toggle" aria-pressed="${bgm.enabled?'true':'false'}">${bgm.enabled?'🔊 BGM':'🔇 BGM'}</button><label class="bgm-volume" title="BGM 볼륨"><span>♪</span><input id="bgmVolume" type="range" min="0" max="100" step="1" value="${Math.round(bgm.volume*100)}" aria-label="BGM 볼륨"><small id="bgmVolumeValue">${Math.round(bgm.volume*100)}%</small></label></div>`:'';
-    return `<header class="header"><div class="brand"><div class="logo"><span>◆</span></div><div><div class="brand-title">ACQUIRE <span class="classic-tag">CLASSIC</span></div><div class="brand-sub">HOTEL EMPIRE · ONLINE BOARD GAME</div></div></div><div class="top-actions"><span class="connection-dot ${net.connected?'online':''}"><i></i>${net.connected?'ONLINE':'CONNECTING'}</span>${net.roomCode?`<span class="badge room-badge">ROOM ${escapeHtml(net.roomCode)}</span>`:''}${inGame?`<span class="badge gold">ROUND ${state.round}</span>`:''}${bgmControl}<button type="button" class="header-text-btn" data-open-info="prices" aria-label="주가표 보기">📊 주가표</button>${inGame?'<button type="button" class="header-text-btn" data-open-info="history" aria-label="게임 이력 보기">☷ 기록</button>':''}<button type="button" class="header-icon-btn" data-open-info="rules" aria-label="규칙 보기">?</button><button type="button" class="header-icon-btn" data-open-info="settings" aria-label="설정">⚙</button></div></header>`;
+    return `<header class="header"><div class="brand"><div class="logo"><span>◆</span></div><div><div class="brand-title">ACQUIRE <span class="classic-tag">CLASSIC</span></div><div class="brand-sub">HOTEL EMPIRE · ONLINE BOARD GAME</div></div></div><div class="top-actions"><span class="connection-dot ${net.connected?'online':''}"><i></i>${net.connected?'ONLINE':'CONNECTING'}</span>${net.roomCode?`<span class="badge room-badge">ROOM ${escapeHtml(net.roomCode)}</span>`:''}${inGame?`<span class="badge gold">ROUND ${state.round}</span>`:''}${bgmControl}<button type="button" class="header-text-btn" data-open-info="prices" aria-label="주가표 보기">📊 주가표</button>${inGame?'<button type="button" class="header-text-btn" data-open-info="history" aria-label="게임 이력 보기">☷ 기록</button>':''}<button type="button" class="header-icon-btn" data-open-info="rules" aria-label="규칙 보기">?</button><button type="button" class="header-icon-btn" data-open-info="settings" aria-label="설정">⚙</button>${inGame?'<button type="button" class="header-icon-btn more-menu-btn" data-open-info="more" aria-label="더보기">⋯</button>':''}</div></header>`;
   }
 
   function renderInfoModal(){
@@ -1656,6 +1697,7 @@
       return `<div class="modal-back local-modal-back"><div class="modal card info-modal price-modal"><button class="modal-close" data-close-info aria-label="닫기">×</button><span class="entry-kicker">CLASSIC STOCK TABLE</span><h2>📊 클래식 주가표</h2><p>호텔 체인의 현재 크기에 따라 주식 1장 가격과 최대/2대 주주 보너스가 결정됩니다.</p><div class="price-tier-legend"><span><b style="--pc:#e84e5f">●</b> 색슨 · 타워</span><span><b style="--pc:#5b78d4">●</b> 아메리칸 · 페스티벌 · 월드와이드</span><span><b style="--pc:#28a6ca">●</b> 콘티넨탈 · 임페리얼</span></div><div class="price-table-wrap"><table class="price-table"><thead><tr><th>1주 가격</th><th>색슨/타워<br>체인 크기</th><th>중간 3체인<br>체인 크기</th><th>콘티넨탈/임페리얼<br>체인 크기</th><th>최대 주주</th><th>2대 주주</th></tr></thead><tbody>${rows.map(r=>`<tr>${r.map((c,i)=>`<td class="${i===0?'price-cell':i>=4?'bonus-cell':''}">${c}</td>`).join('')}</tr>`).join('')}</tbody></table></div><div class="rule-note">주주 보너스는 주가의 10배 / 5배입니다. 단독 주주는 두 보너스를 모두 받고, 최대주주 동률은 두 보너스를 합쳐 나눕니다. 2대주주만 동률이면 2대주주 보너스만 나누며, 분배액은 $100 단위로 올림합니다.</div><button class="btn primary" data-close-info style="width:100%;margin-top:14px">확인</button></div></div>`;
     }
     if(ui.modal==='history') return `<div class="modal-back local-modal-back"><div class="modal card info-modal history-modal"><button class="modal-close" data-close-info aria-label="닫기">×</button><span class="entry-kicker">MATCH HISTORY</span><h2>☷ 게임 이력</h2><p>공개 행동만 기록됩니다. 새로 뽑은 비공개 타일 좌표는 다른 플레이어에게 기록되지 않습니다.</p><div class="history-list">${state.logs.map((x,i)=>`<div class="history-row"><span>${state.logs.length-i}</span><p>${escapeHtml(x)}</p></div>`).join('')||'<div class="history-empty">아직 기록이 없습니다.</div>'}</div><button class="btn primary" data-close-info style="width:100%;margin-top:14px">닫기</button></div></div>`;
+    if(ui.modal==='more') return `<div class="modal-back local-modal-back"><div class="modal card info-modal more-menu-modal"><button class="modal-close" data-close-info aria-label="닫기">×</button><span class="entry-kicker">GAME MENU</span><h2>⋯ 더보기</h2><div class="more-menu-list"><button type="button" class="more-menu-item" data-open-info="history"><span>☷</span><div><b>게임 기록</b><small>지금까지의 공개 행동 확인</small></div></button><button type="button" class="more-menu-item" data-open-info="rules"><span>?</span><div><b>게임 규칙</b><small>규칙과 진행 방법 확인</small></div></button><button type="button" class="more-menu-item" data-open-info="settings"><span>⚙</span><div><b>화면 설정</b><small>보드 크기와 애니메이션 설정</small></div></button><button type="button" class="more-menu-item danger" id="leaveGameFromMenu"><span>↗</span><div><b>방 나가기</b><small>현재 게임에서 나갑니다</small></div></button></div><button class="btn" data-close-info style="width:100%;margin-top:14px">취소</button></div></div>`;
     if(ui.modal==='rules') return `<div class="modal-back local-modal-back"><div class="modal card info-modal"><button class="modal-close" data-close-info aria-label="닫기">×</button><span class="entry-kicker">HOW TO PLAY</span><h2>게임 규칙</h2><div class="rules-grid"><section><b>① 순서·타일 배치</b><p>게임 시작 시 뒤집힌 전체 타일 더미에서 1장씩 뽑습니다. 모두 뽑은 뒤 숫자가 낮고 같은 숫자면 A에 가까운 순서로 턴을 정하고 즉시 자동으로 게임을 시작합니다. 게임 중에는 내 타일 1장을 같은 좌표에 놓습니다.</p></section><section><b>② 체인과 안전 체인</b><p>연결된 타일이 2개 이상이면 호텔 체인이 됩니다. 11칸 이상인 체인은 안전 체인이며 다른 안전 체인과 합병되지 않습니다.</p></section><section><b>③ 합병</b><p>더 큰 체인이 존속합니다. 동률이면 합병을 만든 플레이어가 존속 체인을 고릅니다. 소멸 체인의 주주가 1명뿐이면 최대+2대 보너스를 모두 받고, 최대주주가 동률이면 두 보너스를 합쳐 나눕니다. 소멸 체인 주식은 매도·2:1 교환·보유를 선택합니다.</p></section><section><b>④ 주식 매수·타일 보충</b><p>타일 처리 후 활성 체인의 주식을 합계 최대 3주까지 살 수 있습니다. 방장은 시작 전에 턴 제한을 무제한 또는 30초 단위(최대 3분)로 정할 수 있습니다. 제한 시간이 있는 경우 시간이 끝나면 현재 단계에 따라 자동 진행됩니다: 타일 단계는 배치 가능한 손패 타일을 무작위 배치하고 주식은 사지 않으며, 주식 단계는 매수 없이, 타일 뽑기 단계는 자동으로 1장을 뽑고 턴을 마칩니다.</p></section><section><b>⑤ 영구 불가 타일</b><p>안전 체인끼리 합병시키는 등 영구적으로 놓을 수 없는 손패 타일은 자신의 턴에 폐기할 수 있고, 폐기 좌표는 보드에 ✕로 공개됩니다.</p></section><section><b>승리 조건</b><p>종료 시 활성 체인의 주주 보너스와 보유 주식을 현금화한 뒤 최종 자산이 가장 많은 플레이어가 승리합니다.</p></section></div><button class="btn primary" data-close-info style="width:100%;margin-top:16px">확인</button></div></div>`;
     return `<div class="modal-back local-modal-back"><div class="modal card info-modal"><button class="modal-close" data-close-info aria-label="닫기">×</button><span class="entry-kicker">DISPLAY</span><h2>화면 설정</h2><div class="settings-list"><label><span><b>보드 크기</b><small>PC에서 보드 칸 크기를 조절합니다.</small></span><select id="boardScaleSetting"><option value="90" ${ui.settings.boardScale===90?'selected':''}>90%</option><option value="100" ${ui.settings.boardScale===100?'selected':''}>100%</option><option value="110" ${ui.settings.boardScale===110?'selected':''}>110%</option></select></label><label><span><b>진행 도움말</b><small>내 타일 아래 단계 설명을 표시합니다.</small></span><input id="hintSetting" type="checkbox" ${ui.settings.showHints?'checked':''}></label><label><span><b>애니메이션 줄이기</b><small>게임 시작과 결과 화면의 움직임을 줄입니다.</small></span><input id="motionSetting" type="checkbox" ${ui.settings.reducedMotion?'checked':''}></label></div><button class="btn primary" data-save-settings style="width:100%;margin-top:16px">설정 저장</button></div></div>`;
   }
@@ -1699,6 +1741,8 @@
   function bindGlobalUi(){
     document.querySelectorAll('[data-open-info]').forEach(el=>el.onclick=()=>{ui.modal=el.dataset.openInfo;render();});
     document.querySelectorAll('[data-close-info]').forEach(el=>el.onclick=()=>{ui.modal=null;render();});
+    const leaveGameFromMenu=document.getElementById('leaveGameFromMenu');
+    if(leaveGameFromMenu) leaveGameFromMenu.onclick=()=>{if(confirm('방에서 나갈까요?')){sendNet({type:'leave'});net.roomCode='';localStorage.removeItem('acquireRoomCode');state.screen='lobby';ui.modal=null;render();}};
     const save=document.querySelector('[data-save-settings]');
     if(save) save.onclick=()=>{
       ui.settings.boardScale=Number(document.getElementById('boardScaleSetting').value)||100;
