@@ -266,6 +266,9 @@
     const copy=JSON.parse(JSON.stringify(state));
     copy.toast='';
     copy.playerEmotes={}; // 말풍선은 별도 실시간 메시지로 전송하며 게임 상태에는 저장하지 않는다.
+    // 주식 +/- 선택은 현재 플레이어만 보는 임시 선택이다. 중간 선택값은 서버/다른 플레이어에 공개하지 않는다.
+    // 실제 구매 결과(현금/보유주식/은행재고)는 '구매 확정' 또는 '구매 없이 진행' 시점에만 동기화된다.
+    if(copy.phase==='BUY_STOCK') copy.pendingBuy=Object.fromEntries(HOTEL_CHAINS.map(h=>[h.id,0]));
     return copy;
   }
   function syncState() { if(net.roomCode) sendNet({type:'sync', roomCode:net.roomCode, gameState:snapshotState()}); }
@@ -1180,14 +1183,50 @@
   function pendingBuyCost() { return Object.entries(state.pendingBuy).reduce((sum,[id,n])=>sum+n*stockPrice(id),0); }
 
   function adjustBuy(id,delta) {
-    if(state.phase!=='BUY_STOCK'||!activeChains().includes(id)) return;
-    const next=Math.max(0,state.pendingBuy[id]+delta);
-    const totalWithout=pendingBuyCount()-state.pendingBuy[id];
-    if(totalWithout+next>3) return toast('한 턴에 최대 3주까지 살 수 있어요.');
-    if(next>state.chainBank[id]) return toast('은행에 남은 주식이 부족해요.');
+    if(state.phase!=='BUY_STOCK'||!canControlCurrent()||!activeChains().includes(id)) return false;
+    const before=state.pendingBuy[id]||0;
+    const next=Math.max(0,before+delta);
+    const totalWithout=pendingBuyCount()-before;
+    if(totalWithout+next>3) { toast('한 턴에 최대 3주까지 살 수 있어요.'); return false; }
+    if(next>state.chainBank[id]) { toast('은행에 남은 주식이 부족해요.'); return false; }
     state.pendingBuy[id]=next;
-    if(pendingBuyCost()>currentPlayer().cash){ state.pendingBuy[id]-=delta; return toast('현금이 부족해요.'); }
-    render();
+    if(pendingBuyCost()>currentPlayer().cash){
+      state.pendingBuy[id]=before;
+      toast('현금이 부족해요.');
+      return false;
+    }
+    return true;
+  }
+
+  // 주식 +/-는 전체 화면을 다시 그리지 않고 필요한 DOM만 갱신한다.
+  // 모바일 Bottom Sheet의 스크롤/터치 상태를 유지해서 버튼 연타 시 버벅임을 줄인다.
+  function refreshBuyUi() {
+    const total=pendingBuyCount();
+    const cost=pendingBuyCost();
+    HOTEL_CHAINS.forEach(h=>{
+      const n=state.pendingBuy[h.id]||0;
+      document.querySelectorAll(`[data-buy-count="${h.id}"]`).forEach(el=>{el.textContent=String(n);});
+      document.querySelectorAll(`[data-buy-minus="${h.id}"]`).forEach(el=>{
+        el.disabled=state.phase!=='BUY_STOCK'||!canControlCurrent()||n<=0;
+      });
+      document.querySelectorAll(`[data-buy-plus="${h.id}"]`).forEach(el=>{
+        const active=activeChains().includes(h.id);
+        const nextCost=cost+stockPrice(h.id);
+        el.disabled=state.phase!=='BUY_STOCK'||!canControlCurrent()||!active||total>=3||n>=state.chainBank[h.id]||nextCost>currentPlayer().cash;
+      });
+    });
+    document.querySelectorAll('[data-buy-summary-count]').forEach(el=>{el.textContent=`${total}/3주`;});
+    document.querySelectorAll('[data-buy-summary-cost]').forEach(el=>{el.textContent=money(cost);});
+    document.querySelectorAll('[data-buy-confirm]').forEach(el=>{el.textContent=total?'선택 주식 구매 확정':'주식 구매 없이 진행';});
+    const mobileConfirm=document.getElementById('mobileConfirmBuy');
+    if(mobileConfirm) mobileConfirm.textContent=total?'매수 확정':'매수 없이 진행';
+    const mobileStock=document.querySelector('.mobile-action-stock small');
+    if(mobileStock && state.phase==='BUY_STOCK' && canControlCurrent()) mobileStock.textContent=`${total}/3 · ${money(cost)}`;
+  }
+
+  function handleBuyStep(id,delta) {
+    // 터치 연타에서 300ms 지연/더블탭 확대 같은 체감 흔들림을 줄이기 위해 즉시 로컬 반영한다.
+    if(adjustBuy(id,delta)) refreshBuyUi();
   }
 
   function confirmBuy() {
@@ -1214,6 +1253,10 @@
   function openDrawTilePopup() {
     state.phase='DRAW_TILE';
     state.drawOptions=[];
+    // 주식 매수 확정/구매 없이 진행 직후 모바일 주식창은 자동으로 닫고 타일 뽑기 화면으로 전환한다.
+    ui.mobilePanel=null;
+    ui.mobileMarketScrollTop=0;
+    ui.autoStockSheetKey='';
     state.remainingDeck=shuffle(state.remainingDeck);
     if(!state.remainingDeck.length) return finishTurnAfterDraw();
     state.modal={type:'drawTile'};
@@ -1461,9 +1504,9 @@
         </main>
 
         <aside class="card market mobile-info-panel ${ui.mobilePanel==='market'?'mobile-open':''}"><div class="mobile-sheet-handle"></div><div class="section-title"><span>📈 주식 매수</span><span class="sheet-title-actions"><span class="badge">최대 3주</span><button type="button" class="mobile-sheet-close" data-close-mobile-panel aria-label="닫기">×</button></span></div>
-          <div class="market-summary"><div style="color:var(--muted);font-size:12px">선택 ${buyCount}/3주 · 총 구매 금액</div><div class="total">${money(buyCost)}</div><div style="color:var(--muted);font-size:11px">보유 현금 ${money(cp.cash)}</div></div>
+          <div class="market-summary"><div style="color:var(--muted);font-size:12px">선택 <span data-buy-summary-count>${buyCount}/3주</span> · 총 구매 금액</div><div class="total" data-buy-summary-cost>${money(buyCost)}</div><div style="color:var(--muted);font-size:11px">보유 현금 ${money(cp.cash)}</div></div>
           <div class="hotel-list">${HOTEL_CHAINS.map(h=>hotelMarketHtml(h)).join('')}</div>
-          <div class="market-actions"><button class="btn primary" id="confirmBuy" ${!myTurn||state.phase!=='BUY_STOCK'?'disabled':''}>${buyCount?'선택 주식 구매 확정':'주식 구매 없이 진행'}</button><button class="btn primary" id="endTurn" disabled>팝업에서 타일 뽑기</button><button class="btn gold" id="declareEnd" ${!myTurn||!canEndGame()||!['BUY_STOCK','END_TURN'].includes(state.phase)?'disabled':''}>🏁 게임 종료 선언</button></div>
+          <div class="market-actions"><button class="btn primary" id="confirmBuy" data-buy-confirm ${!myTurn||state.phase!=='BUY_STOCK'?'disabled':''}>${buyCount?'선택 주식 구매 확정':'주식 구매 없이 진행'}</button><button class="btn primary" id="endTurn" disabled>팝업에서 타일 뽑기</button><button class="btn gold" id="declareEnd" ${!myTurn||!canEndGame()||!['BUY_STOCK','END_TURN'].includes(state.phase)?'disabled':''}>🏁 게임 종료 선언</button></div>
           <div class="log-box"><div class="section-title"><span>게임 로그</span><button type="button" class="mini-link-btn" data-open-info="history">전체 이력</button></div>${state.logs.slice(0,12).map(x=>`<div class="log-line">${escapeHtml(x)}</div>`).join('')||'<div class="log-line">게임 기록이 여기에 표시됩니다.</div>'}</div>
         </aside>
       </div>
@@ -1510,8 +1553,8 @@
       ui.pendingPlacementTile=tile;
       render();
     });
-    document.querySelectorAll('[data-buy-plus]').forEach(el=>el.onclick=()=>localDo(()=>adjustBuy(el.dataset.buyPlus,1)));
-    document.querySelectorAll('[data-buy-minus]').forEach(el=>el.onclick=()=>localDo(()=>adjustBuy(el.dataset.buyMinus,-1)));
+    document.querySelectorAll('[data-buy-plus]').forEach(el=>el.onclick=(ev)=>{ev.preventDefault();handleBuyStep(el.dataset.buyPlus,1);});
+    document.querySelectorAll('[data-buy-minus]').forEach(el=>el.onclick=(ev)=>{ev.preventDefault();handleBuyStep(el.dataset.buyMinus,-1);});
     document.getElementById('confirmBuy').onclick=()=>localDo(confirmBuy);
     document.getElementById('endTurn').onclick=()=>localDo(endTurn);
     document.getElementById('declareEnd').onclick=()=>localDo(declareEndGame);
@@ -1563,7 +1606,7 @@
 
   function hotelMarketHtml(h) {
     const size=chainSize(h.id); const active=size>=2; const safe=isSafe(h.id); const n=state.pendingBuy[h.id];
-    return `<div class="hotel ${active?'active-chain':''}" style="--hc:${h.color}"><div class="chain-logo ${h.id==='Tower'?'tower-chain-logo':''}">${chainMarkHtml(h.id)}</div><div><div class="hotel-name"><span style="color:${h.color}">●</span> ${h.name}</div><div class="hotel-sub">${active?`${size}칸${safe?' · SAFE':''}`:'미설립'} · 남은 주식 ${state.chainBank[h.id]} / 25</div><div class="hotel-sub">${active?`1주 ${money(stockPrice(h.id))}`:'거래 불가'}</div></div><div class="stock-step"><button data-buy-minus="${h.id}" ${state.phase!=='BUY_STOCK'||!active||n<=0?'disabled':''}>−</button><b>${n}</b><button data-buy-plus="${h.id}" ${state.phase!=='BUY_STOCK'||!active||state.chainBank[h.id]<=n?'disabled':''}>＋</button></div></div>`;
+    return `<div class="hotel ${active?'active-chain':''}" style="--hc:${h.color}"><div class="chain-logo ${h.id==='Tower'?'tower-chain-logo':''}">${chainMarkHtml(h.id)}</div><div><div class="hotel-name"><span style="color:${h.color}">●</span> ${h.name}</div><div class="hotel-sub">${active?`${size}칸${safe?' · SAFE':''}`:'미설립'} · 남은 주식 ${state.chainBank[h.id]} / 25</div><div class="hotel-sub">${active?`1주 ${money(stockPrice(h.id))}`:'거래 불가'}</div></div><div class="stock-step"><button type="button" data-buy-minus="${h.id}" ${state.phase!=='BUY_STOCK'||!active||n<=0?'disabled':''}>−</button><b data-buy-count="${h.id}">${n}</b><button type="button" data-buy-plus="${h.id}" ${state.phase!=='BUY_STOCK'||!active||state.chainBank[h.id]<=n?'disabled':''}>＋</button></div></div>`;
   }
 
   function isMergerModal(m=state.modal) {

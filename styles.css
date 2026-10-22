@@ -645,3 +645,22 @@ body.game-screen-active{overflow:hidden}
   .mobile-action-stock{font-size:12px!important}.mobile-action-stock b{font-size:11px}
   .mobile-my-info{padding-left:5px;padding-right:5px}.mobile-hand-info{gap:2px}.mobile-hand-chip b{font-size:8.5px}.mobile-hand-chip small{font-size:5.3px}
 }
+
+/* v28: 모바일 주식 +/- 터치 안정화 */
+.stock-step button{
+  touch-action:manipulation;
+  -webkit-tap-highlight-color:transparent;
+  user-select:none;
+  -webkit-user-select:none;
+}
+@media (max-width: 760px){
+  .market.mobile-info-panel .stock-step button{
+    min-width:34px;
+    min-height:34px;
+    transition:background-color .08s ease,border-color .08s ease,opacity .08s ease;
+    transform:none!important;
+  }
+  .market.mobile-info-panel .stock-step button:active{
+    transform:none!important;
+  }
+}
