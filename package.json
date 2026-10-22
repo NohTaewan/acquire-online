@@ -1,6 +1,6 @@
 {
-  "name": "acquire-online-v22",
-  "version": "22.0.0",
+  "name": "acquire-online-v25",
+  "version": "25.0.0",
   "private": true,
   "description": "Acquire-style online multiplayer web game prototype for 2-6 players",
   "main": "server.js",

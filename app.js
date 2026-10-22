@@ -96,7 +96,8 @@
     mergerBoardPeek: false,
     emoteMenu: false,
     emoteCategory: null,
-    mobilePanel: 'players',
+    mobilePanel: null,
+    autoStockSheetKey: '',
     dismissedReactionIds: {},
     settings: (() => {
       try { return Object.assign({boardScale:100,showHints:true,reducedMotion:false}, JSON.parse(localStorage.getItem('acquireUiSettings')||'{}')); }
@@ -287,8 +288,9 @@
     state.toast='';
     ui.localSelectedTile=null; ui.pendingPlacementTile=null; ui.pendingDiscardTile=null; ui.drawReveal=null; ui.bonusEffect=null; ui.mergerBoardPeek=false;
     if(previousPhase!==state.phase){
-      if(state.phase==='BUY_STOCK') ui.mobilePanel='market';
-      else if(state.phase==='PLACE_TILE') ui.mobilePanel='players';
+      if(state.phase==='BUY_STOCK' && canControlCurrent()) ui.mobilePanel='market';
+      else ui.mobilePanel=null;
+      if(state.phase!=='BUY_STOCK') ui.autoStockSheetKey='';
     }
     if(state.lastBonusEvent?.id && state.lastBonusEvent.id!==previousBonusId) showBonusEffectLocal(state.lastBonusEvent);
     const enteringPlayableGame=(wasLobby && state.screen==='game' && !['SETUP_PICK','SETUP_REVEAL'].includes(state.phase));
@@ -1407,15 +1409,23 @@
   function renderGame() {
     document.body.classList.add('game-screen-active');
     const cp=currentPlayer(); const mine=myPlayerIndex(); const hand=(mine>=0?state.hands[mine]:[])||[]; const myTurn=canControlCurrent(); const buyCount=pendingBuyCount(); const buyCost=pendingBuyCost();
+    // 모바일에서는 주식 매수 단계 진입 시 내 턴에 한해 Bottom Sheet를 딱 한 번 자동으로 연다.
+    const stockSheetKey=`${state.turnToken}:${state.currentPlayer}`;
+    if(state.phase==='BUY_STOCK' && myTurn && ui.autoStockSheetKey!==stockSheetKey){
+      ui.mobilePanel='market';
+      ui.autoStockSheetKey=stockSheetKey;
+    }
+    if(state.phase!=='BUY_STOCK' && ui.autoStockSheetKey) ui.autoStockSheetKey='';
     app.innerHTML=`<div class="app-shell one-screen-game">${headerHtml(true)}
-      <div class="mobile-info-tabs" role="tablist" aria-label="게임 정보"><button type="button" class="${ui.mobilePanel==='players'?'active':''}" data-mobile-panel="players">👑 플레이어</button><button type="button" class="${ui.mobilePanel==='market'?'active':''}" data-mobile-panel="market">📈 주식</button></div>
+      ${ui.mobilePanel?'<button type="button" class="mobile-sheet-backdrop" data-close-mobile-panel aria-label="정보창 닫기"></button>':''}
       <div class="game-layout">
-        <aside class="card side-panel mobile-info-panel ${ui.mobilePanel==='players'?'mobile-open':''}"><div class="section-title"><span>👑 플레이어</span><span class="badge">${state.players.length}명</span></div><div class="players-grid-mobile">
+        <aside class="card side-panel mobile-info-panel ${ui.mobilePanel==='players'?'mobile-open':''}"><div class="mobile-sheet-handle"></div><div class="section-title"><span>👑 플레이어 현황</span><span class="sheet-title-actions"><span class="badge">${state.players.length}명</span><button type="button" class="mobile-sheet-close" data-close-mobile-panel aria-label="닫기">×</button></span></div><div class="players-grid-mobile">
           ${state.players.map((p,i)=>{const bp=state.modal?.type==='mergerBrief'?(state.modal.payouts||[]).find(x=>x.playerIndex===i):null;const mineCard=p.clientId===net.clientId;return `<div class="player-card ${i===state.currentPlayer?'active':''} ${mineCard?'me emote-clickable':''} ${memberStatus(p.clientId)?.autoPlay?'auto-player':''} ${bp?'bonus-receiving':''}" ${mineCard?'data-open-emotes="1" role="button" tabindex="0" aria-label="내 이모티콘 열기"':''} style="--player:${p.profileColor||seatColor(i)}">${playerEmoteBubbleHtml(p)}${playerQuickReactionHtml(p)}<div class="player-head"><span class="player-avatar">${escapeHtml(p.name.slice(0,1).toUpperCase())}</span><strong>${escapeHtml(p.name)}${i===state.currentPlayer?' ◀':''}</strong><span class="badge">${i+1}</span></div><div class="player-presence">${playerConnectionHtml(p)}${mineCard?'<span class="emote-hint">💬 내 카드 눌러 반응</span>':''}</div><div class="player-meta"><span>타일 ${state.hands[i].length}장</span><span class="cash ${bp?'cash-counting':''}" ${bp?`data-cash-before="${Number(bp.cashBefore)||0}" data-cash-after="${Number(bp.cashAfter)||p.cash}"`:''}>${money(bp?bp.cashBefore:p.cash)}</span>${bp?`<span class="cash-gain-float">+${money(bp.amount)}</span>`:''}</div><div class="stock-tags">${playerStockTags(p)}</div></div>`}).join('')}
         </div></aside>
 
         <main class="center-stack">
           <section class="card turn-banner"><div><div class="big">${escapeHtml(cp.name)}님의 턴</div><div class="small">${phaseLabel()}</div></div><div class="status-row"><span class="turn-timer ${Number(state.turnLimitSeconds)===0?'unlimited':''}">⏱ <b id="turnTimer">${turnTimerText()}</b></span><span class="badge green">LIVE MATCH</span><span class="badge gold">ROUND ${state.round}</span>${canEndGame()?'<span class="badge danger-badge">종료 가능</span>':''}</div>${currentDisconnectNoticeHtml()}</section>
+          <div class="mobile-game-toolbar"><div class="mobile-my-cash"><small>내 현금</small><strong>${money(mine>=0?state.players[mine].cash:0)}</strong></div><button type="button" data-mobile-panel="players">👥<span>플레이어</span></button><button type="button" data-mobile-panel="market">📈<span>주식</span></button><button type="button" data-mobile-emote-open="1">💬<span>반응</span></button><button type="button" data-open-info="prices">📊<span>주가표</span></button></div>
           <section class="card board-card"><div class="board-head"><h2>◆ 도시 보드 <span style="font-size:11px;color:var(--muted);font-weight:700">CITY GRID</span></h2><div class="status-row"><span class="badge">108 ZONES · 12×9</span><span class="badge">배치 ${Object.keys(state.board).length}</span><span class="badge discard-badge">폐기 ${Object.keys(state.discardedTiles||{}).length}</span></div></div><div class="board-wrap"><div class="board">${ALL_TILES.map(tileCell).join('')}</div></div>
             <div class="legend"><span>▫️ 독립 타일</span><span>✕ 폐기된 타일</span>${HOTEL_CHAINS.map(h=>`<span class="legend-chain"><b class="mini-chain-logo" style="--hc:${h.color}">${chainMarkHtml(h.id)}</b> ${h.name}</span>`).join('')}</div>
           </section>
@@ -1424,16 +1434,29 @@
           </div><div class="help game-help">${helpText()}</div></section>
         </main>
 
-        <aside class="card market mobile-info-panel ${ui.mobilePanel==='market'?'mobile-open':''}"><div class="section-title"><span>📈 STOCK EXCHANGE</span><span class="badge">최대 3주</span></div>
+        <aside class="card market mobile-info-panel ${ui.mobilePanel==='market'?'mobile-open':''}"><div class="mobile-sheet-handle"></div><div class="section-title"><span>📈 주식 매수</span><span class="sheet-title-actions"><span class="badge">최대 3주</span><button type="button" class="mobile-sheet-close" data-close-mobile-panel aria-label="닫기">×</button></span></div>
           <div class="market-summary"><div style="color:var(--muted);font-size:12px">선택 ${buyCount}/3주 · 총 구매 금액</div><div class="total">${money(buyCost)}</div><div style="color:var(--muted);font-size:11px">보유 현금 ${money(cp.cash)}</div></div>
           <div class="hotel-list">${HOTEL_CHAINS.map(h=>hotelMarketHtml(h)).join('')}</div>
           <div class="market-actions"><button class="btn primary" id="confirmBuy" ${!myTurn||state.phase!=='BUY_STOCK'?'disabled':''}>${buyCount?'선택 주식 구매 확정':'주식 구매 없이 진행'}</button><button class="btn primary" id="endTurn" disabled>팝업에서 타일 뽑기</button><button class="btn gold" id="declareEnd" ${!myTurn||!canEndGame()||!['BUY_STOCK','END_TURN'].includes(state.phase)?'disabled':''}>🏁 게임 종료 선언</button><button class="btn danger" id="resetGame">방 나가기</button></div>
           <div class="log-box"><div class="section-title"><span>게임 로그</span><button type="button" class="mini-link-btn" data-open-info="history">전체 이력</button></div>${state.logs.slice(0,12).map(x=>`<div class="log-line">${escapeHtml(x)}</div>`).join('')||'<div class="log-line">게임 기록이 여기에 표시됩니다.</div>'}</div>
         </aside>
       </div>
+      <div class="mobile-action-bar">
+        <div class="mobile-action-state"><small>${myTurn?'내 차례':'대기 중'}</small><strong>${phaseLabel()}</strong></div>
+        ${state.phase==='BUY_STOCK'&&myTurn?`<button type="button" class="mobile-action-secondary" data-mobile-panel="market">📈 ${buyCount}/3 · ${money(buyCost)}</button><button type="button" class="mobile-action-primary" id="mobileConfirmBuy">${buyCount?'매수 확정':'매수 없이 진행'}</button>`:''}
+        ${state.phase==='PLACE_TILE'&&myTurn?`<button type="button" class="mobile-action-primary" data-mobile-hand-focus>🧩 타일 선택</button>`:''}
+        ${['CHOOSE_SURVIVOR','CHOOSE_DEFUNCT','MERGER_DECISION','MERGER_BONUS'].includes(state.phase)?`<button type="button" class="mobile-action-primary" data-mobile-merger-board>🗺️ 보드 보기</button>`:''}
+        ${state.phase==='DRAW_TILE'&&myTurn?`<button type="button" class="mobile-action-primary" disabled>🎴 타일을 뽑으세요</button>`:''}
+        ${!myTurn?`<button type="button" class="mobile-action-primary" disabled>${escapeHtml(cp.name)}님 진행 중</button>`:''}
+      </div>
     </div>${mobileEmoteToastHtml()}${renderModal()}${mergerBoardPeekHtml()}${state.toast?`<div class="toast">${state.toast}</div>`:''}`;
 
     document.querySelectorAll('[data-mobile-panel]').forEach(el=>el.onclick=()=>{ui.mobilePanel=el.dataset.mobilePanel;render();});
+    document.querySelectorAll('[data-close-mobile-panel]').forEach(el=>el.onclick=()=>{ui.mobilePanel=null;render();});
+    document.querySelectorAll('[data-mobile-emote-open]').forEach(el=>el.onclick=()=>{ui.emoteMenu=true;ui.emoteCategory=null;render();});
+    const mobileBuy=document.getElementById('mobileConfirmBuy'); if(mobileBuy) mobileBuy.onclick=()=>localDo(confirmBuy);
+    document.querySelectorAll('[data-mobile-hand-focus]').forEach(el=>el.onclick=()=>{ui.mobilePanel=null;render();const target=document.querySelector('.hand-card');target?.scrollIntoView?.({block:'nearest',behavior:'smooth'});});
+    document.querySelectorAll('[data-mobile-merger-board]').forEach(el=>el.onclick=()=>{ui.mergerBoardPeek=true;render();});
     document.querySelectorAll('[data-open-emotes]').forEach(el=>{
       const open=()=>{ui.emoteMenu=true;ui.emoteCategory=null;render();};
       el.onclick=(ev)=>{ if(ev.target.closest('button')) return; open(); };
