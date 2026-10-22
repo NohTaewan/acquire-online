@@ -664,3 +664,121 @@ body.game-screen-active{overflow:hidden}
     transform:none!important;
   }
 }
+
+/* v30 · mobile natural scroll layout */
+.stock-mini.zero-stock{opacity:.45}
+@media(max-width:900px){
+  html,body{height:auto!important;min-height:100%!important;overflow-x:hidden!important;overflow-y:auto!important}
+  body.game-screen-active{height:auto!important;overflow-y:auto!important;overflow-x:hidden!important}
+  .one-screen-game{height:auto!important;min-height:100vh!important;overflow:visible!important;padding:8px 8px 24px!important;display:block!important}
+  .one-screen-game .game-layout{display:flex!important;flex-direction:column!important;overflow:visible!important;min-height:0!important;gap:8px!important}
+  .one-screen-game .center-stack{order:1!important;display:flex!important;flex-direction:column!important;overflow:visible!important;gap:8px!important}
+  .one-screen-game .side-panel.mobile-info-panel{order:2!important;display:block!important;position:static!important;inset:auto!important;max-height:none!important;overflow:visible!important;border-radius:12px!important;padding:10px!important;box-shadow:0 8px 24px rgba(0,0,0,.16)!important;background:linear-gradient(180deg,#0d283a 0,#071724 100%)!important}
+  .one-screen-game .market.mobile-info-panel{order:3!important;display:block!important;position:static!important;inset:auto!important;max-height:none!important;overflow:visible!important;border-radius:12px!important;padding:10px!important;box-shadow:0 8px 24px rgba(0,0,0,.16)!important;background:linear-gradient(180deg,#0a1f32,#071522)!important}
+  .mobile-sheet-backdrop,.mobile-sheet-handle,.mobile-sheet-close,.mobile-player-strip,.mobile-action-bar,.mobile-info-tabs{display:none!important}
+
+  /* 보드는 가로가 부족하면 보드 영역만 좌우 스크롤 */
+  .one-screen-game .board-card{overflow:visible!important;min-height:0!important}
+  .one-screen-game .board-wrap{display:block!important;overflow-x:auto!important;overflow-y:hidden!important;min-height:0!important;justify-content:flex-start!important;-webkit-overflow-scrolling:touch;overscroll-behavior-x:contain;padding-bottom:6px!important}
+  .one-screen-game .board{width:max-content!important;max-width:none!important;height:auto!important;transform:none!important;margin:0!important}
+
+  /* 플레이어 현황: 축약 아이콘 대신 실제 호텔명/주식 수량 표시 */
+  .one-screen-game .players-grid-mobile{grid-template-columns:1fr!important;gap:8px!important}
+  .one-screen-game .player-card{padding:10px!important;margin:0!important}
+  .one-screen-game .player-presence{display:flex!important}
+  .one-screen-game .player-meta{flex-direction:row!important;align-items:center!important;gap:10px!important;margin-top:7px!important;font-size:11px!important}
+  .one-screen-game .stock-tags{display:flex!important;flex-wrap:wrap!important;gap:5px!important;max-height:none!important;overflow:visible!important;margin-top:8px!important}
+  .one-screen-game .stock-tags .stock-mini{font-size:9px!important;padding:4px 6px!important;white-space:nowrap!important}
+  .one-screen-game .stock-tags .stock-mini b{font-size:10px;color:var(--c)}
+
+  /* 내 정보는 타일만. 현금/주식은 플레이어 현황에서 확인 */
+  .mobile-my-info{display:block!important;padding:8px!important;min-height:0!important}
+  .mobile-my-info-head{margin-bottom:7px!important}
+  .mobile-my-info-head>div:first-child{gap:6px!important}.mobile-my-info-head small{font-size:9px!important}.mobile-my-info-head strong{font-size:11px!important}
+  .mobile-my-hint{margin-left:auto;color:#7fa1b5;font-size:8px;text-align:right}
+  .mobile-hand-info{grid-template-columns:repeat(6,minmax(42px,1fr))!important;gap:5px!important;overflow-x:auto!important;padding-bottom:2px}
+  .mobile-hand-chip{min-height:42px!important}.mobile-hand-chip b{font-size:11px!important}.mobile-hand-chip small{font-size:7px!important}
+
+  /* 주식 영역은 항상 전체 표시 + 터치 여유 확보 */
+  .one-screen-game .market.mobile-info-panel .hotel-list{grid-template-columns:1fr!important;gap:8px!important}
+  .one-screen-game .market.mobile-info-panel .hotel{grid-template-columns:34px minmax(0,1fr) 140px!important;gap:8px!important;padding:8px!important;align-items:center!important}
+  .one-screen-game .market.mobile-info-panel .chain-logo{width:34px!important;height:34px!important;flex-basis:34px!important}
+  .one-screen-game .market.mobile-info-panel .hotel-name{font-size:11px!important}
+  .one-screen-game .market.mobile-info-panel .hotel-sub{font-size:8px!important}
+  .one-screen-game .market.mobile-info-panel .stock-step{display:grid!important;grid-template-columns:42px 40px 42px!important;gap:8px!important;align-items:center!important;justify-self:end!important;width:140px!important}
+  .one-screen-game .market.mobile-info-panel .stock-step button{min-width:42px!important;width:42px!important;min-height:40px!important;height:40px!important;padding:0!important;font-size:18px!important;border-radius:10px!important;line-height:1!important}
+  .one-screen-game .market.mobile-info-panel .stock-step b{display:grid!important;place-items:center!important;min-width:40px!important;height:40px!important;font-size:15px!important;line-height:1!important;text-align:center!important;background:#071725;border:1px solid #284a61;border-radius:9px;font-variant-numeric:tabular-nums}
+  .one-screen-game .market.mobile-info-panel .market-summary{display:block!important;padding:10px!important;margin-bottom:8px!important}
+  .one-screen-game .market.mobile-info-panel .market-summary>div{font-size:10px!important}.one-screen-game .market.mobile-info-panel .market-summary .total{font-size:20px!important;margin:2px 0!important}
+  .one-screen-game .market.mobile-info-panel .market-actions{grid-template-columns:1fr!important;gap:7px!important}
+  .one-screen-game .market.mobile-info-panel .market-actions .btn{min-height:44px!important;font-size:11px!important;padding:8px 10px!important}
+
+  /* 전체 정보형 모바일에서는 로그도 마지막에 그대로 노출 */
+  .one-screen-game .market.mobile-info-panel .log-box{display:block!important;max-height:none!important;overflow:visible!important;margin-top:10px!important;padding:9px!important}
+  .one-screen-game .market.mobile-info-panel .log-line{font-size:9px!important;padding:3px 0!important}
+}
+
+@media(max-width:420px){
+  .one-screen-game .market.mobile-info-panel .hotel{grid-template-columns:30px minmax(0,1fr) 132px!important;gap:6px!important;padding:7px!important}
+  .one-screen-game .market.mobile-info-panel .stock-step{grid-template-columns:40px 36px 40px!important;gap:8px!important;width:132px!important}
+  .one-screen-game .market.mobile-info-panel .stock-step button{min-width:40px!important;width:40px!important;height:40px!important}
+  .one-screen-game .market.mobile-info-panel .stock-step b{min-width:36px!important;height:40px!important;font-size:14px!important}
+  .mobile-hand-info{grid-template-columns:repeat(6,minmax(40px,1fr))!important}
+}
+
+/* v31 · mobile readable table layout: keep useful minimum widths and allow local horizontal scroll */
+@media(max-width:900px){
+  /* 페이지는 세로로, 정보 밀도가 높은 영역은 각 영역 안에서 가로 스크롤 */
+  html,body{overflow-x:hidden!important;overflow-y:auto!important}
+  .one-screen-game{overflow:visible!important}
+
+  /* 모바일에서 중복되는 큰 손패 선택 카드는 숨기고, 좌표 정보/폐기는 mobile-my-info에서만 처리 */
+  .one-screen-game .hand-card{display:none!important}
+  .mobile-my-info{overflow-x:auto!important;-webkit-overflow-scrolling:touch;scrollbar-width:thin}
+  .mobile-hand-info{display:grid!important;grid-template-columns:repeat(6,72px)!important;width:max-content!important;min-width:100%!important;gap:8px!important;overflow:visible!important}
+  .mobile-hand-chip{width:72px!important;min-height:52px!important;border-radius:9px!important}
+  .mobile-hand-chip b{font-size:14px!important}.mobile-hand-chip small{font-size:8px!important}
+
+  /* 보드는 축소하지 않고 읽기 쉬운 크기 유지 */
+  .one-screen-game .board-wrap{overflow-x:auto!important;overflow-y:hidden!important;scrollbar-width:thin}
+  .one-screen-game .board{min-width:732px!important;grid-template-columns:repeat(12,56px)!important;gap:5px!important}
+  .one-screen-game .cell{min-width:56px!important;min-height:50px!important}
+  .one-screen-game .cell .coord{font-size:10px!important}
+
+  /* 플레이어는 한 카드 안에 7개 호텔을 정식 이름으로 한 줄 표시. 좁으면 카드 내부만 좌우 스크롤 */
+  .one-screen-game .players-grid-mobile{display:grid!important;grid-template-columns:1fr!important;gap:10px!important}
+  .one-screen-game .player-card{padding:12px!important;overflow:hidden!important}
+  .one-screen-game .player-head{font-size:13px!important}.one-screen-game .player-meta{font-size:12px!important}
+  .one-screen-game .stock-tags{display:grid!important;grid-template-columns:repeat(7,96px)!important;width:max-content!important;min-width:672px!important;gap:6px!important;overflow:visible!important;margin-top:10px!important}
+  .one-screen-game .player-card .stock-tags{overflow:visible!important}
+  .one-screen-game .player-card{overflow-x:auto!important;-webkit-overflow-scrolling:touch;scrollbar-width:thin}
+  .one-screen-game .stock-tags .stock-mini{display:flex!important;align-items:center!important;justify-content:space-between!important;gap:5px!important;min-width:96px!important;min-height:34px!important;padding:7px 8px!important;font-size:9px!important;border-radius:8px!important}
+  .one-screen-game .stock-tags .stock-mini b{font-size:12px!important}
+
+  /* 주식 매수표: 축소 금지. 한 행을 충분히 넓게 두고 목록 자체를 좌우 스크롤 */
+  .one-screen-game .market.mobile-info-panel{overflow:hidden!important;padding:12px!important}
+  .one-screen-game .market.mobile-info-panel .hotel-list{display:grid!important;grid-template-columns:1fr!important;gap:8px!important;overflow-x:auto!important;-webkit-overflow-scrolling:touch;scrollbar-width:thin;padding-bottom:7px!important}
+  .one-screen-game .market.mobile-info-panel .hotel{grid-template-columns:48px 250px 190px!important;min-width:520px!important;width:520px!important;gap:14px!important;padding:10px 12px!important;align-items:center!important}
+  .one-screen-game .market.mobile-info-panel .chain-logo{width:44px!important;height:44px!important;flex-basis:44px!important}
+  .one-screen-game .market.mobile-info-panel .hotel-name{font-size:13px!important}
+  .one-screen-game .market.mobile-info-panel .hotel-sub{font-size:10px!important;line-height:1.45!important}
+  .one-screen-game .market.mobile-info-panel .stock-step{grid-template-columns:52px 58px 52px!important;gap:12px!important;width:186px!important;justify-self:end!important}
+  .one-screen-game .market.mobile-info-panel .stock-step button{width:52px!important;min-width:52px!important;height:48px!important;min-height:48px!important;font-size:22px!important;border-radius:11px!important;touch-action:manipulation!important}
+  .one-screen-game .market.mobile-info-panel .stock-step b{width:58px!important;min-width:58px!important;height:48px!important;font-size:18px!important;border-radius:10px!important}
+  .one-screen-game .market.mobile-info-panel .market-summary{min-width:0!important}
+  .one-screen-game .market.mobile-info-panel .market-actions .btn{min-height:50px!important;font-size:13px!important}
+
+  /* 섹션 제목과 로그도 읽기 쉬운 크기 */
+  .one-screen-game .section-title{font-size:13px!important;margin-bottom:9px!important}
+  .one-screen-game .log-box{font-size:10px!important}
+  .one-screen-game .log-line{font-size:10px!important;line-height:1.55!important}
+}
+
+@media(max-width:420px){
+  /* 작은 폰에서도 너비를 더 줄이지 않는다. 스크롤로 확인 */
+  .one-screen-game .market.mobile-info-panel .hotel{grid-template-columns:48px 250px 190px!important;min-width:520px!important;width:520px!important}
+  .one-screen-game .market.mobile-info-panel .stock-step{grid-template-columns:52px 58px 52px!important;gap:12px!important;width:186px!important}
+  .one-screen-game .market.mobile-info-panel .stock-step button{width:52px!important;min-width:52px!important;height:48px!important}
+  .one-screen-game .market.mobile-info-panel .stock-step b{width:58px!important;min-width:58px!important;height:48px!important;font-size:18px!important}
+  .mobile-hand-info{grid-template-columns:repeat(6,72px)!important}
+}
