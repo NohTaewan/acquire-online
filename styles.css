@@ -782,3 +782,70 @@ body.game-screen-active{overflow:hidden}
   .one-screen-game .market.mobile-info-panel .stock-step b{width:58px!important;min-width:58px!important;height:48px!important;font-size:18px!important}
   .mobile-hand-info{grid-template-columns:repeat(6,72px)!important}
 }
+
+/* v32 · mobile hybrid layout: page fits viewport; only the board scrolls horizontally */
+@media(max-width:900px){
+  html,body{width:100%!important;max-width:100%!important;overflow-x:hidden!important;overflow-y:auto!important}
+  body.game-screen-active{overflow-y:auto!important}
+  .app-shell.one-screen-game{width:100%!important;max-width:100%!important;padding:8px!important;overflow:visible!important}
+  .one-screen-game .header{width:100%!important;min-width:0!important;flex-wrap:wrap!important;gap:8px!important;margin-bottom:9px!important;padding-bottom:9px!important}
+  .one-screen-game .brand{min-width:0!important}.one-screen-game .brand-title{font-size:17px!important}.one-screen-game .brand-sub{font-size:9px!important}
+  .one-screen-game .top-actions{width:100%!important;display:flex!important;flex-wrap:nowrap!important;overflow-x:auto!important;gap:5px!important;padding-bottom:2px!important;-webkit-overflow-scrolling:touch}
+  .one-screen-game .top-actions>*{flex:0 0 auto!important}
+
+  .one-screen-game .game-layout{width:100%!important;max-width:100%!important;display:flex!important;flex-direction:column!important;gap:8px!important;overflow:visible!important}
+  .one-screen-game .center-stack,.one-screen-game .board-card,.one-screen-game .side-panel.mobile-info-panel,.one-screen-game .market.mobile-info-panel,.mobile-my-info{width:100%!important;max-width:100%!important;min-width:0!important}
+
+  /* Turn information stays compact and readable. */
+  .one-screen-game .turn-banner{padding:10px 11px!important;gap:7px!important}
+  .one-screen-game .turn-banner .big{font-size:17px!important}.one-screen-game .turn-banner .small{font-size:10px!important}
+  .one-screen-game .status-row{gap:5px!important}.one-screen-game .badge{font-size:9px!important;padding:4px 6px!important}
+
+  /* Board is the one intentionally wide surface. */
+  .one-screen-game .board-card{overflow:hidden!important;padding:9px!important}
+  .one-screen-game .board-head{align-items:flex-start!important;flex-direction:column!important;gap:5px!important}
+  .one-screen-game .board-wrap{display:block!important;width:100%!important;max-width:100%!important;overflow-x:auto!important;overflow-y:hidden!important;-webkit-overflow-scrolling:touch;overscroll-behavior-x:contain;padding:0 0 7px!important}
+  .one-screen-game .board{width:660px!important;min-width:660px!important;grid-template-columns:repeat(12,51px)!important;gap:4px!important}
+  .one-screen-game .cell{width:51px!important;min-width:51px!important;min-height:46px!important}
+  .one-screen-game .legend{min-width:0!important;gap:6px!important;font-size:8px!important}
+
+  /* Own hand is information-first and fits the viewport. */
+  .mobile-my-info{overflow:hidden!important;padding:8px!important}
+  .mobile-my-info-head{margin-bottom:6px!important}.mobile-my-hint{font-size:8px!important}
+  .mobile-hand-info{display:grid!important;grid-template-columns:repeat(6,minmax(0,1fr))!important;width:100%!important;min-width:0!important;gap:4px!important;overflow:visible!important}
+  .mobile-hand-chip{width:auto!important;min-width:0!important;min-height:44px!important;padding:3px 2px!important;border-radius:7px!important}
+  .mobile-hand-chip b{font-size:11px!important}.mobile-hand-chip small{font-size:6.5px!important}
+
+  /* Player information: no nested horizontal scrolling; show all 7 hotels in a two-column grid. */
+  .one-screen-game .side-panel.mobile-info-panel{overflow:visible!important;padding:10px!important}
+  .one-screen-game .players-grid-mobile{grid-template-columns:1fr!important;gap:8px!important}
+  .one-screen-game .player-card{width:100%!important;max-width:100%!important;overflow:visible!important;padding:10px!important}
+  .one-screen-game .player-head{font-size:12px!important}.one-screen-game .player-meta{font-size:11px!important}
+  .one-screen-game .stock-tags{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;width:100%!important;min-width:0!important;gap:5px!important;margin-top:8px!important;overflow:visible!important}
+  .one-screen-game .stock-tags .stock-mini{display:flex!important;align-items:center!important;justify-content:space-between!important;min-width:0!important;width:100%!important;min-height:31px!important;padding:6px 7px!important;font-size:9px!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important}
+  .one-screen-game .stock-tags .stock-mini b{font-size:11px!important;flex:0 0 auto!important;margin-left:4px!important}
+
+  /* Stock market: each chain fits the viewport, controls get their own full-width row. */
+  .one-screen-game .market.mobile-info-panel{overflow:visible!important;padding:10px!important}
+  .one-screen-game .market.mobile-info-panel .hotel-list{display:grid!important;grid-template-columns:1fr!important;width:100%!important;overflow:visible!important;gap:8px!important;padding:0!important}
+  .one-screen-game .market.mobile-info-panel .hotel{width:100%!important;min-width:0!important;max-width:100%!important;display:grid!important;grid-template-columns:40px minmax(0,1fr)!important;grid-template-rows:auto auto!important;gap:7px 9px!important;padding:9px!important;align-items:center!important}
+  .one-screen-game .market.mobile-info-panel .chain-logo{width:38px!important;height:38px!important;flex-basis:38px!important;grid-row:1!important}
+  .one-screen-game .market.mobile-info-panel .hotel>div:nth-child(2){min-width:0!important;grid-column:2!important;grid-row:1!important}
+  .one-screen-game .market.mobile-info-panel .hotel-name{font-size:12px!important}.one-screen-game .market.mobile-info-panel .hotel-sub{font-size:9px!important;line-height:1.4!important}
+  .one-screen-game .market.mobile-info-panel .stock-step{grid-column:1/-1!important;grid-row:2!important;display:grid!important;grid-template-columns:minmax(56px,1fr) 64px minmax(56px,1fr)!important;gap:10px!important;width:100%!important;max-width:none!important;justify-self:stretch!important;margin-top:2px!important}
+  .one-screen-game .market.mobile-info-panel .stock-step button{width:100%!important;min-width:0!important;height:46px!important;min-height:46px!important;font-size:21px!important;border-radius:10px!important;touch-action:manipulation!important}
+  .one-screen-game .market.mobile-info-panel .stock-step b{display:grid!important;place-items:center!important;width:64px!important;min-width:64px!important;height:46px!important;font-size:18px!important;border-radius:10px!important;background:#071725!important;border:1px solid #284a61!important;font-variant-numeric:tabular-nums!important}
+  .one-screen-game .market.mobile-info-panel .market-summary{width:100%!important;min-width:0!important;padding:9px!important}.one-screen-game .market.mobile-info-panel .market-summary .total{font-size:22px!important}
+  .one-screen-game .market.mobile-info-panel .market-actions{grid-template-columns:1fr!important;gap:7px!important}.one-screen-game .market.mobile-info-panel .market-actions .btn{width:100%!important;min-height:48px!important;font-size:12px!important}
+
+  /* Log remains readable at the bottom. */
+  .one-screen-game .market.mobile-info-panel .log-box{width:100%!important;max-width:100%!important;overflow:visible!important;margin-top:10px!important}
+  .one-screen-game .log-line{font-size:9px!important;line-height:1.55!important;overflow-wrap:anywhere!important}
+}
+
+@media(max-width:380px){
+  .one-screen-game .stock-tags{grid-template-columns:1fr!important}
+  .mobile-hand-info{grid-template-columns:repeat(3,minmax(0,1fr))!important}
+  .one-screen-game .market.mobile-info-panel .stock-step{grid-template-columns:minmax(52px,1fr) 58px minmax(52px,1fr)!important;gap:8px!important}
+  .one-screen-game .market.mobile-info-panel .stock-step b{width:58px!important;min-width:58px!important}
+}
