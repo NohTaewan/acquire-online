@@ -1012,3 +1012,129 @@ body.game-screen-active{overflow:hidden}
     margin-top:7px!important;
   }
 }
+
+/* v35 · MOBILE CLASSIC RESTORE
+   Restore the early, simple mobile flow:
+   Turn -> Board -> Hand -> Players -> Stock market.
+   Only the board scrolls horizontally. No persistent/bottom-sheet panels. */
+@media (max-width:900px){
+  html,body{width:100%!important;max-width:100%!important;overflow-x:hidden!important;overflow-y:auto!important}
+  body.game-screen-active{height:auto!important;min-height:100%!important;overflow-y:auto!important}
+  .app-shell.one-screen-game{width:100%!important;max-width:100%!important;height:auto!important;min-height:100%!important;padding:10px 10px 22px!important;overflow:visible!important}
+
+  /* Classic single-column game flow. */
+  .app-shell.one-screen-game .game-layout{
+    display:flex!important;
+    flex-direction:column!important;
+    width:100%!important;
+    max-width:100%!important;
+    gap:10px!important;
+    overflow:visible!important;
+  }
+  .app-shell.one-screen-game .center-stack{order:1!important;display:grid!important;width:100%!important;max-width:100%!important;height:auto!important;gap:10px!important;overflow:visible!important}
+  .app-shell.one-screen-game .side-panel.mobile-info-panel{order:2!important}
+  .app-shell.one-screen-game .market.mobile-info-panel{order:3!important}
+
+  /* Remove the later mobile navigation/sheet UI completely. */
+  .mobile-quick-toolbar,.mobile-my-info,.mobile-log-card,.mobile-action-bar,.mobile-info-tabs,.mobile-sheet-backdrop,.mobile-sheet-handle,.mobile-sheet-close{display:none!important}
+
+  /* Player and stock areas are ordinary document sections again. */
+  .app-shell.one-screen-game .side-panel.mobile-info-panel,
+  .app-shell.one-screen-game .market.mobile-info-panel{
+    display:block!important;
+    position:static!important;
+    inset:auto!important;
+    width:100%!important;
+    max-width:100%!important;
+    max-height:none!important;
+    min-height:0!important;
+    overflow:visible!important;
+    padding:11px!important;
+    margin:0!important;
+    border-radius:14px!important;
+    box-shadow:0 10px 28px rgba(0,0,0,.16)!important;
+    animation:none!important;
+  }
+  .app-shell.one-screen-game .side-panel.mobile-info-panel .sheet-title-actions,
+  .app-shell.one-screen-game .market.mobile-info-panel .sheet-title-actions{display:flex!important;align-items:center!important;gap:6px!important}
+  .app-shell.one-screen-game .side-panel.mobile-info-panel .sheet-title-actions .mobile-sheet-close,
+  .app-shell.one-screen-game .market.mobile-info-panel .sheet-title-actions .mobile-sheet-close{display:none!important}
+
+  /* Header is compact but remains normal flow. */
+  .app-shell.one-screen-game .header{width:100%!important;max-width:100%!important;align-items:center!important;flex-wrap:wrap!important;gap:7px!important;margin-bottom:9px!important}
+  .app-shell.one-screen-game .brand-sub{display:none!important}
+  .app-shell.one-screen-game .top-actions{max-width:100%!important;display:flex!important;flex-wrap:wrap!important;gap:5px!important}
+
+  /* Turn banner. */
+  .app-shell.one-screen-game .turn-banner{width:100%!important;padding:11px!important;gap:8px!important;flex-wrap:wrap!important}
+  .app-shell.one-screen-game .turn-banner .big{font-size:17px!important}
+  .app-shell.one-screen-game .turn-banner .small{font-size:10px!important}
+
+  /* Board: always visible; horizontal scroll only. */
+  .app-shell.one-screen-game .board-card{display:block!important;width:100%!important;max-width:100%!important;height:auto!important;min-height:0!important;padding:8px!important;overflow:hidden!important}
+  .app-shell.one-screen-game .board-head{display:flex!important;align-items:flex-start!important;justify-content:space-between!important;flex-wrap:wrap!important;gap:5px!important}
+  .app-shell.one-screen-game .board-wrap{
+    display:block!important;
+    width:100%!important;
+    max-width:100%!important;
+    height:auto!important;
+    min-height:0!important;
+    overflow-x:auto!important;
+    overflow-y:hidden!important;
+    -webkit-overflow-scrolling:touch!important;
+    overscroll-behavior-x:contain!important;
+    padding:0 0 7px!important;
+  }
+  .app-shell.one-screen-game .board{
+    display:grid!important;
+    width:620px!important;
+    min-width:620px!important;
+    height:auto!important;
+    min-height:0!important;
+    transform:none!important;
+    margin:0!important;
+    grid-template-columns:repeat(12,48px)!important;
+    grid-template-rows:repeat(9,44px)!important;
+    grid-auto-rows:44px!important;
+    gap:4px!important;
+  }
+  .app-shell.one-screen-game .board .cell{box-sizing:border-box!important;width:48px!important;min-width:48px!important;height:44px!important;min-height:44px!important;aspect-ratio:auto!important}
+  .app-shell.one-screen-game .legend{display:flex!important;flex-wrap:wrap!important;gap:6px!important;width:100%!important;margin-top:6px!important;font-size:8px!important}
+
+  /* Original hand card is back. */
+  .app-shell.one-screen-game .hand-card{display:block!important;width:100%!important;max-width:100%!important;padding:10px!important;overflow:visible!important}
+  .app-shell.one-screen-game .hand{display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr))!important;gap:7px!important;width:100%!important}
+  .app-shell.one-screen-game .hand-tile{min-width:0!important;min-height:60px!important;padding:9px 5px!important;font-size:14px!important}
+  .app-shell.one-screen-game .game-help{font-size:10px!important;line-height:1.5!important}
+
+  /* Players: readable cards below the hand. */
+  .app-shell.one-screen-game .players-grid-mobile{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:8px!important;width:100%!important}
+  .app-shell.one-screen-game .player-card{width:100%!important;max-width:100%!important;min-width:0!important;padding:9px!important;overflow:visible!important}
+  .app-shell.one-screen-game .player-head{font-size:11px!important}
+  .app-shell.one-screen-game .player-meta{font-size:10px!important;gap:4px!important;flex-wrap:wrap!important}
+  .app-shell.one-screen-game .stock-tags{display:grid!important;grid-template-columns:1fr!important;gap:3px!important;margin-top:6px!important;max-height:none!important;overflow:visible!important}
+  .app-shell.one-screen-game .stock-tags .stock-mini{display:flex!important;align-items:center!important;justify-content:space-between!important;width:100%!important;min-width:0!important;padding:4px 6px!important;font-size:8px!important;white-space:nowrap!important}
+
+  /* Stock market: normal section, easy controls, no sheet behavior. */
+  .app-shell.one-screen-game .market.mobile-info-panel .hotel-list{display:grid!important;grid-template-columns:1fr!important;gap:7px!important;width:100%!important;overflow:visible!important}
+  .app-shell.one-screen-game .market.mobile-info-panel .hotel{display:grid!important;grid-template-columns:40px minmax(0,1fr) 142px!important;grid-template-rows:auto!important;width:100%!important;min-width:0!important;gap:8px!important;align-items:center!important;padding:8px!important}
+  .app-shell.one-screen-game .market.mobile-info-panel .chain-logo{width:38px!important;height:38px!important;flex-basis:38px!important}
+  .app-shell.one-screen-game .market.mobile-info-panel .hotel>div:nth-child(2){min-width:0!important}
+  .app-shell.one-screen-game .market.mobile-info-panel .hotel-name{font-size:11px!important}
+  .app-shell.one-screen-game .market.mobile-info-panel .hotel-sub{font-size:8.5px!important;line-height:1.35!important}
+  .app-shell.one-screen-game .market.mobile-info-panel .stock-step{display:grid!important;grid-template-columns:42px 46px 42px!important;gap:6px!important;width:142px!important;justify-self:end!important;margin:0!important}
+  .app-shell.one-screen-game .market.mobile-info-panel .stock-step button{width:42px!important;min-width:42px!important;height:42px!important;min-height:42px!important;font-size:20px!important;border-radius:9px!important;touch-action:manipulation!important}
+  .app-shell.one-screen-game .market.mobile-info-panel .stock-step b{display:grid!important;place-items:center!important;width:46px!important;min-width:46px!important;height:42px!important;font-size:17px!important;border-radius:9px!important;font-variant-numeric:tabular-nums!important}
+  .app-shell.one-screen-game .market.mobile-info-panel .market-actions{display:grid!important;grid-template-columns:1fr!important;gap:7px!important}
+  .app-shell.one-screen-game .market.mobile-info-panel .market-actions .btn{min-height:46px!important;font-size:12px!important}
+  .app-shell.one-screen-game .market.mobile-info-panel .log-box{display:block!important;margin-top:10px!important}
+}
+
+@media (max-width:480px){
+  .app-shell.one-screen-game .players-grid-mobile{grid-template-columns:1fr!important}
+  .app-shell.one-screen-game .hand{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+  .app-shell.one-screen-game .market.mobile-info-panel .hotel{grid-template-columns:38px minmax(0,1fr)!important;grid-template-rows:auto auto!important}
+  .app-shell.one-screen-game .market.mobile-info-panel .stock-step{grid-column:1/-1!important;grid-row:2!important;width:100%!important;grid-template-columns:minmax(52px,1fr) 58px minmax(52px,1fr)!important;gap:10px!important;justify-self:stretch!important;margin-top:2px!important}
+  .app-shell.one-screen-game .market.mobile-info-panel .stock-step button{width:100%!important;min-width:0!important;height:46px!important}
+  .app-shell.one-screen-game .market.mobile-info-panel .stock-step b{width:58px!important;min-width:58px!important;height:46px!important}
+}
