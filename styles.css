@@ -849,3 +849,93 @@ body.game-screen-active{overflow:hidden}
   .one-screen-game .market.mobile-info-panel .stock-step{grid-template-columns:minmax(52px,1fr) 58px minmax(52px,1fr)!important;gap:8px!important}
   .one-screen-game .market.mobile-info-panel .stock-step b{width:58px!important;min-width:58px!important}
 }
+
+/* v33 · mobile reset: board + hand + history are the default view.
+   Player status and stock market open only on demand as bottom sheets. */
+.mobile-quick-toolbar,.mobile-log-card{display:none}
+
+@media(max-width:900px){
+  html,body{width:100%!important;max-width:100%!important;overflow-x:hidden!important;overflow-y:auto!important}
+  body.game-screen-active{height:auto!important;min-height:100%!important;overflow-y:auto!important}
+  .app-shell.one-screen-game{height:auto!important;min-height:100%!important;padding:8px!important;padding-bottom:16px!important;overflow:visible!important}
+  .one-screen-game .game-layout{display:block!important;width:100%!important;max-width:100%!important;overflow:visible!important}
+  .one-screen-game .center-stack{display:grid!important;width:100%!important;max-width:100%!important;gap:8px!important;grid-template-rows:auto auto auto auto!important;overflow:visible!important}
+
+  /* Mobile default navigation: four explicit actions, no persistent player cards. */
+  .mobile-player-strip{display:none!important}
+  .mobile-quick-toolbar{display:grid!important;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;width:100%!important}
+  .mobile-quick-toolbar button{min-width:0;min-height:46px;border:1px solid #2d526b;border-radius:10px;background:linear-gradient(180deg,#0b2a3d,#071b29);color:#e7f5fb;display:flex;align-items:center;justify-content:center;gap:5px;padding:6px;font-weight:900;touch-action:manipulation}
+  .mobile-quick-toolbar button span{font-size:17px;line-height:1}.mobile-quick-toolbar button b{font-size:9px;white-space:nowrap}
+
+  /* Only the board is intentionally horizontally scrollable. */
+  .one-screen-game .board-card{width:100%!important;max-width:100%!important;overflow:hidden!important;padding:9px!important}
+  .one-screen-game .board-wrap{width:100%!important;max-width:100%!important;overflow-x:auto!important;overflow-y:hidden!important;-webkit-overflow-scrolling:touch;overscroll-behavior-x:contain;padding-bottom:7px!important;justify-content:flex-start!important}
+  .one-screen-game .board{width:660px!important;min-width:660px!important;grid-template-columns:repeat(12,51px)!important;gap:4px!important}
+  .one-screen-game .cell{width:51px!important;min-width:51px!important;min-height:46px!important}
+
+  /* Own tiles and recent history always stay in the normal document flow. */
+  .mobile-my-info{display:block!important;width:100%!important;max-width:100%!important;overflow:visible!important;padding:9px!important}
+  .mobile-hand-info{display:grid!important;grid-template-columns:repeat(6,minmax(0,1fr))!important;gap:4px!important;width:100%!important}
+  .mobile-hand-chip{min-width:0!important;min-height:44px!important}
+  .one-screen-game .hand-card{display:none!important}
+  .mobile-log-card{display:block!important;width:100%!important;max-width:100%!important;padding:10px!important}
+  .mobile-log-card .section-title{margin-bottom:6px!important}
+  .mobile-log-list{display:grid;gap:0;max-height:none;overflow:visible}
+  .mobile-log-card .log-line{font-size:10px!important;line-height:1.5!important;padding:4px 0!important;border-bottom:1px solid rgba(255,255,255,.05)}
+
+  /* Player/stock panels are bottom sheets only. They never occupy default layout space. */
+  .one-screen-game .side-panel.mobile-info-panel,
+  .one-screen-game .market.mobile-info-panel{
+    display:none!important;
+    position:fixed!important;
+    left:8px!important;
+    right:8px!important;
+    bottom:8px!important;
+    top:auto!important;
+    z-index:1260!important;
+    width:auto!important;
+    max-width:none!important;
+    max-height:min(76vh,620px)!important;
+    overflow:auto!important;
+    -webkit-overflow-scrolling:touch;
+    border-radius:18px!important;
+    padding:11px!important;
+    background:linear-gradient(180deg,#0d283a,#071724)!important;
+    border:1px solid #38627e!important;
+    box-shadow:0 -12px 42px rgba(0,0,0,.5)!important;
+  }
+  .one-screen-game .side-panel.mobile-info-panel.mobile-open,
+  .one-screen-game .market.mobile-info-panel.mobile-open{display:block!important;animation:mobileSheetUp .18s ease-out}
+  .mobile-sheet-handle{display:block!important;width:46px;height:4px;border-radius:999px;background:#46687e;margin:0 auto 9px}
+  .mobile-sheet-close{display:grid!important;width:30px;height:30px;place-items:center;border:1px solid #34556b;border-radius:8px;background:#071a27;color:#cde7f6;font-size:19px;line-height:1}
+  .mobile-sheet-backdrop{display:block!important;position:fixed!important;inset:0!important;z-index:1250!important;border:0!important;background:rgba(2,8,14,.54)!important;padding:0!important}
+
+  /* Player sheet: full readable stock names. */
+  .one-screen-game .players-grid-mobile{display:grid!important;grid-template-columns:1fr!important;gap:8px!important}
+  .one-screen-game .player-card{width:100%!important;max-width:100%!important;padding:10px!important;margin:0!important}
+  .one-screen-game .player-presence{display:flex!important}
+  .one-screen-game .stock-tags{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:5px!important;max-height:none!important;overflow:visible!important;margin-top:8px!important}
+  .one-screen-game .stock-tags .stock-mini{display:flex!important;justify-content:space-between!important;align-items:center!important;min-height:31px!important;padding:6px 7px!important;font-size:9px!important}
+
+  /* Stock sheet: comfortable controls, no overlap. */
+  .one-screen-game .market.mobile-info-panel .hotel-list{display:grid!important;grid-template-columns:1fr!important;gap:8px!important;overflow:visible!important;width:100%!important}
+  .one-screen-game .market.mobile-info-panel .hotel{width:100%!important;min-width:0!important;display:grid!important;grid-template-columns:40px minmax(0,1fr)!important;grid-template-rows:auto auto!important;gap:7px 9px!important;padding:9px!important}
+  .one-screen-game .market.mobile-info-panel .hotel>div:nth-child(2){grid-column:2!important;min-width:0!important}
+  .one-screen-game .market.mobile-info-panel .stock-step{grid-column:1/-1!important;display:grid!important;grid-template-columns:minmax(56px,1fr) 64px minmax(56px,1fr)!important;gap:10px!important;width:100%!important;margin-top:3px!important}
+  .one-screen-game .market.mobile-info-panel .stock-step button{width:100%!important;min-width:0!important;height:48px!important;min-height:48px!important;font-size:22px!important;border-radius:10px!important;touch-action:manipulation!important}
+  .one-screen-game .market.mobile-info-panel .stock-step b{display:grid!important;place-items:center!important;width:64px!important;min-width:64px!important;height:48px!important;font-size:18px!important;background:#071725!important;border:1px solid #284a61!important;border-radius:10px!important;font-variant-numeric:tabular-nums!important}
+  .one-screen-game .market.mobile-info-panel .log-box{display:none!important}
+  .one-screen-game .market.mobile-info-panel .market-actions{grid-template-columns:1fr!important;gap:7px!important}
+  .one-screen-game .market.mobile-info-panel .market-actions .btn{min-height:48px!important;font-size:12px!important}
+
+  /* No fixed action bar in this reset; it was obscuring content. */
+  .mobile-action-bar,.mobile-info-tabs{display:none!important}
+}
+
+@media(max-width:390px){
+  .mobile-quick-toolbar button{gap:3px;padding:5px 2px}.mobile-quick-toolbar button b{font-size:8px}.mobile-quick-toolbar button span{font-size:16px}
+  .mobile-hand-info{grid-template-columns:repeat(3,minmax(0,1fr))!important}
+  .one-screen-game .stock-tags{grid-template-columns:1fr!important}
+  .one-screen-game .market.mobile-info-panel .stock-step{grid-template-columns:minmax(52px,1fr) 58px minmax(52px,1fr)!important;gap:8px!important}
+  .one-screen-game .market.mobile-info-panel .stock-step b{width:58px!important;min-width:58px!important}
+}
