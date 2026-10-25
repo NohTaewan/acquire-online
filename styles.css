@@ -1381,3 +1381,159 @@ body.game-screen-active{overflow:hidden}
     justify-self: start !important;
   }
 }
+
+/* v37 · true unconstrained mobile canvas
+   Mobile uses the desktop three-column game table unchanged.
+   The whole page may scroll horizontally/vertically; no sheets, sticky bars, or mobile-only panels. */
+@media (max-width: 780px) {
+  html, body {
+    width: auto !important;
+    min-width: 0 !important;
+    max-width: none !important;
+    overflow-x: auto !important;
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch;
+  }
+  body { touch-action: pan-x pan-y !important; }
+
+  .app-shell.one-screen-game {
+    width: 1280px !important;
+    min-width: 1280px !important;
+    max-width: none !important;
+    min-height: 100vh !important;
+    height: auto !important;
+    overflow: visible !important;
+    padding: 10px 14px 24px !important;
+  }
+
+  .app-shell.one-screen-game .header {
+    width: 100% !important;
+    min-width: 0 !important;
+    flex-wrap: nowrap !important;
+    align-items: center !important;
+  }
+  .app-shell.one-screen-game .brand-sub { display:block !important; }
+  .app-shell.one-screen-game .room-badge { display:inline-flex !important; }
+
+  .app-shell.one-screen-game .game-layout {
+    display: grid !important;
+    grid-template-columns: 240px 720px 292px !important;
+    gap: 14px !important;
+    width: 1266px !important;
+    min-width: 1266px !important;
+    height: auto !important;
+    overflow: visible !important;
+    align-items: start !important;
+  }
+
+  .app-shell.one-screen-game .side-panel.mobile-info-panel,
+  .app-shell.one-screen-game .market.mobile-info-panel {
+    display: block !important;
+    position: static !important;
+    inset: auto !important;
+    width: auto !important;
+    min-width: 0 !important;
+    max-width: none !important;
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    overflow: visible !important;
+    transform: none !important;
+    animation: none !important;
+    margin: 0 !important;
+  }
+  .app-shell.one-screen-game .side-panel.mobile-info-panel { grid-column:1 !important; grid-row:1 !important; }
+  .app-shell.one-screen-game .center-stack { grid-column:2 !important; grid-row:1 !important; display:grid !important; gap:12px !important; width:720px !important; min-width:720px !important; }
+  .app-shell.one-screen-game .market.mobile-info-panel { grid-column:3 !important; grid-row:1 !important; }
+
+  .app-shell.one-screen-game .turn-banner {
+    width: 100% !important;
+    flex-direction: row !important;
+    align-items: center !important;
+    min-height: 74px !important;
+  }
+  .app-shell.one-screen-game .board-card {
+    width: 720px !important;
+    min-width: 720px !important;
+    height: auto !important;
+    overflow: visible !important;
+  }
+  .app-shell.one-screen-game .board-wrap {
+    width: 100% !important;
+    overflow: visible !important;
+    height: auto !important;
+  }
+  .app-shell.one-screen-game .board {
+    width: 696px !important;
+    min-width: 696px !important;
+    grid-template-columns: repeat(12, 54px) !important;
+    grid-template-rows: repeat(9, 48px) !important;
+    grid-auto-rows: 48px !important;
+    gap: 4px !important;
+  }
+  .app-shell.one-screen-game .board .cell {
+    width:54px !important;
+    min-width:54px !important;
+    height:48px !important;
+    min-height:48px !important;
+  }
+
+  .app-shell.one-screen-game .hand { grid-template-columns:repeat(6,minmax(80px,1fr)) !important; }
+  .app-shell.one-screen-game .players-grid-mobile { display:block !important; }
+  .app-shell.one-screen-game .player-card { margin-bottom:8px !important; }
+  .app-shell.one-screen-game .hotel-list { grid-template-columns:1fr !important; }
+  .app-shell.one-screen-game .market.mobile-info-panel .hotel {
+    grid-template-columns:38px minmax(0,1fr) !important;
+    grid-template-rows:auto auto !important;
+  }
+  .app-shell.one-screen-game .market.mobile-info-panel .stock-step {
+    grid-column:1/-1 !important;
+    width:100% !important;
+    grid-template-columns:minmax(54px,1fr) 60px minmax(54px,1fr) !important;
+    gap:8px !important;
+  }
+  .app-shell.one-screen-game .market.mobile-info-panel .stock-step button,
+  .app-shell.one-screen-game .market.mobile-info-panel .stock-step b {
+    height:44px !important;
+    min-height:44px !important;
+  }
+
+  /* Kill every experimental mobile-only layer. */
+  .mobile-game-toolbar,
+  .mobile-quick-toolbar,
+  .mobile-player-strip,
+  .mobile-my-info,
+  .mobile-log-card,
+  .mobile-action-bar,
+  .mobile-info-tabs,
+  .mobile-sheet-backdrop,
+  .mobile-sheet-handle,
+  .mobile-sheet-close,
+  .mobile-player-summary,
+  .mobile-player-panel,
+  .mobile-market-panel { display:none !important; }
+}
+
+/* v37.1 · remove leftover one-screen row sizing that clipped the board */
+@media (max-width: 780px) {
+  .app-shell.one-screen-game .center-stack {
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    grid-template-rows: none !important;
+    grid-auto-rows: auto !important;
+    align-content: start !important;
+    overflow: visible !important;
+  }
+  .app-shell.one-screen-game .board-card,
+  .app-shell.one-screen-game .board-wrap,
+  .app-shell.one-screen-game .board {
+    max-height: none !important;
+  }
+}
+@media (max-width: 780px) {
+  .app-shell.one-screen-game .board-wrap {
+    height: 469px !important;
+    min-height: 469px !important;
+  }
+}

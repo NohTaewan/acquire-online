@@ -93,6 +93,7 @@
     timeoutHandling: false,
     departureHandling: false,
     autoDisconnectedKey: '',
+    mobileBoardCentered: false,
     mergerBoardPeek: false,
     emoteMenu: false,
     emoteCategory: null,
@@ -304,7 +305,7 @@
     if(state.lastBonusEvent?.id && state.lastBonusEvent.id!==previousBonusId) showBonusEffectLocal(state.lastBonusEvent);
     const enteringPlayableGame=(wasLobby && state.screen==='game' && !['SETUP_PICK','SETUP_REVEAL'].includes(state.phase));
     const setupJustFinished=((previousPhase==='SETUP_PICK'||previousPhase==='SETUP_REVEAL') && state.phase==='PLACE_TILE');
-    if(enteringPlayableGame || setupJustFinished) showStartIntro();
+    if(enteringPlayableGame || setupJustFinished) { ui.mobileBoardCentered=false; showStartIntro(); }
     else render();
   }
   function localDo(fn) { fn(); syncState(); }
@@ -1479,14 +1480,7 @@
     const previousMarketSheet=document.querySelector('.market.mobile-info-panel.mobile-open');
     if(previousMarketSheet && ui.mobilePanel==='market') ui.mobileMarketScrollTop=previousMarketSheet.scrollTop;
     const cp=currentPlayer(); const mine=myPlayerIndex(); const hand=(mine>=0?state.hands[mine]:[])||[]; const myTurn=canControlCurrent(); const buyCount=pendingBuyCount(); const buyCost=pendingBuyCost();
-    // 모바일 기본 화면은 보드/내 타일/이력. 주식 매수 턴에서만 주식 패널을 한 번 자동으로 연다.
-    const stockSheetKey=`${state.turnToken}:${state.currentPlayer}`;
-    if(state.phase==='BUY_STOCK' && myTurn && ui.autoStockSheetKey!==stockSheetKey){
-      ui.autoStockSheetKey=stockSheetKey;
-      ui.mobilePanel='market';
-      ui.mobileMarketScrollTop=0;
-    }
-    if(state.phase!=='BUY_STOCK' && ui.autoStockSheetKey) ui.autoStockSheetKey='';
+    // v37: no mobile sheets. Stock choices stay in the normal right-side market panel.
     app.innerHTML=`<div class="app-shell one-screen-game">${headerHtml(true)}
       <div class="game-layout">
         <aside class="card side-panel mobile-info-panel ${ui.mobilePanel==='players'?'mobile-open':''}"><div class="mobile-sheet-handle"></div><div class="section-title"><span>👑 플레이어 현황</span><span class="sheet-title-actions"><span class="badge">${state.players.length}명</span><button type="button" class="mobile-sheet-close" data-close-mobile-panel aria-label="닫기">×</button></span></div><div class="players-grid-mobile">
@@ -1513,7 +1507,6 @@
           <div class="log-box"><div class="section-title"><span>게임 로그</span><button type="button" class="mini-link-btn" data-open-info="history">전체 이력</button></div>${state.logs.slice(0,12).map(x=>`<div class="log-line">${escapeHtml(x)}</div>`).join('')||'<div class="log-line">게임 기록이 여기에 표시됩니다.</div>'}</div>
         </aside>
       </div>
-      ${ui.mobilePanel?'<button type="button" class="mobile-sheet-backdrop" data-close-mobile-panel aria-label="패널 닫기"></button>':''}
     </div>${mobileEmoteToastHtml()}${renderModal()}${mergerBoardPeekHtml()}${state.toast?`<div class="toast">${state.toast}</div>`:''}`;
 
     document.querySelectorAll('[data-mobile-emote-open]').forEach(el=>el.onclick=()=>{ui.emoteMenu=true;ui.emoteCategory=null;render();});
@@ -1563,6 +1556,16 @@
     }
     animateBonusCashCounters();
     bindModal();
+    if(!ui.mobileBoardCentered && window.innerWidth<=780){
+      ui.mobileBoardCentered=true;
+      requestAnimationFrame(()=>{
+        const boardCard=document.querySelector('.board-card');
+        if(boardCard){
+          const r=boardCard.getBoundingClientRect();
+          window.scrollBy({left:r.left-10,top:0,behavior:'auto'});
+        }
+      });
+    }
   }
 
   function animateBonusCashCounters() {
