@@ -32,3 +32,8 @@ v29를 기반으로 모바일 화면을 다시 단순화한 버전입니다.
 - Player stock holdings are shown in a two-column full-name grid.
 - Stock buy controls use a separate full-width row so minus / quantity / plus never overlap.
 - The hand, player cards, market and game log use normal vertical page scrolling.
+
+
+## v34
+- Fixed mobile board collapsing to zero height due to legacy one-screen flex CSS.
+- Board now always occupies its own document height and scrolls horizontally only.

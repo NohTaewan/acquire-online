@@ -939,3 +939,76 @@ body.game-screen-active{overflow:hidden}
   .one-screen-game .market.mobile-info-panel .stock-step{grid-template-columns:minmax(52px,1fr) 58px minmax(52px,1fr)!important;gap:8px!important}
   .one-screen-game .market.mobile-info-panel .stock-step b{width:58px!important;min-width:58px!important}
 }
+
+/* v34 · critical mobile board visibility fix
+   Older one-screen flex rules could collapse .board-wrap to zero height.
+   On mobile the board is normal document content with its own intrinsic height;
+   only horizontal scrolling is used. */
+@media(max-width:900px){
+  .app-shell.one-screen-game .center-stack{
+    display:block!important;
+    height:auto!important;
+    min-height:0!important;
+    overflow:visible!important;
+  }
+  .app-shell.one-screen-game .center-stack > *{
+    margin-bottom:8px;
+  }
+  .app-shell.one-screen-game .board-card{
+    display:block!important;
+    flex:none!important;
+    width:100%!important;
+    height:auto!important;
+    min-height:0!important;
+    max-height:none!important;
+    overflow:hidden!important;
+    padding:9px!important;
+  }
+  .app-shell.one-screen-game .board-wrap{
+    display:block!important;
+    flex:none!important;
+    width:100%!important;
+    max-width:100%!important;
+    height:auto!important;
+    min-height:452px!important;
+    max-height:none!important;
+    overflow-x:auto!important;
+    overflow-y:hidden!important;
+    align-items:initial!important;
+    justify-content:initial!important;
+    -webkit-overflow-scrolling:touch!important;
+    overscroll-behavior-x:contain!important;
+    padding:0 0 7px!important;
+  }
+  .app-shell.one-screen-game .board{
+    display:grid!important;
+    flex:none!important;
+    width:660px!important;
+    min-width:660px!important;
+    height:auto!important;
+    min-height:446px!important;
+    margin:0!important;
+    transform:none!important;
+    grid-template-columns:repeat(12,51px)!important;
+    grid-template-rows:repeat(9,46px)!important;
+    grid-auto-rows:46px!important;
+    gap:4px!important;
+    align-content:start!important;
+    justify-content:start!important;
+  }
+  .app-shell.one-screen-game .board .cell{
+    box-sizing:border-box!important;
+    width:51px!important;
+    min-width:51px!important;
+    height:46px!important;
+    min-height:46px!important;
+    aspect-ratio:auto!important;
+  }
+  .app-shell.one-screen-game .legend{
+    display:flex!important;
+    flex-wrap:wrap!important;
+    width:100%!important;
+    min-width:0!important;
+    margin-top:7px!important;
+  }
+}
