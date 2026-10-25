@@ -1138,3 +1138,246 @@ body.game-screen-active{overflow:hidden}
   .app-shell.one-screen-game .market.mobile-info-panel .stock-step button{width:100%!important;min-width:0!important;height:46px!important}
   .app-shell.one-screen-game .market.mobile-info-panel .stock-step b{width:58px!important;min-width:58px!important;height:46px!important}
 }
+
+/* v36 · TRUE EARLY MOBILE RESTORE
+   Mobile now follows the original prototype philosophy: no sheets, no sticky/fixed game controls,
+   no viewport-height fitting, no forced one-screen mode. The desktop sections simply stack in
+   document flow and the page scrolls naturally. */
+@media (max-width: 900px) {
+  html, body {
+    width: 100% !important;
+    max-width: none !important;
+    height: auto !important;
+    min-height: 100% !important;
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
+  }
+  body.game-screen-active {
+    width: 100% !important;
+    height: auto !important;
+    min-height: 100% !important;
+    overflow: visible !important;
+  }
+  .app-shell.one-screen-game {
+    width: 100% !important;
+    max-width: none !important;
+    height: auto !important;
+    min-height: 0 !important;
+    padding: 10px !important;
+    overflow: visible !important;
+  }
+
+  /* Same structural flow as the original mobile prototype. */
+  .app-shell.one-screen-game .game-layout {
+    display: grid !important;
+    grid-template-columns: 1fr !important;
+    gap: 10px !important;
+    width: 100% !important;
+    height: auto !important;
+    min-height: 0 !important;
+    overflow: visible !important;
+  }
+  .app-shell.one-screen-game .side-panel.mobile-info-panel,
+  .app-shell.one-screen-game .center-stack,
+  .app-shell.one-screen-game .market.mobile-info-panel {
+    position: static !important;
+    inset: auto !important;
+    display: block !important;
+    width: 100% !important;
+    max-width: none !important;
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    overflow: visible !important;
+    transform: none !important;
+    animation: none !important;
+    margin: 0 !important;
+  }
+  .app-shell.one-screen-game .side-panel.mobile-info-panel { order: 0 !important; }
+  .app-shell.one-screen-game .center-stack { order: 0 !important; display: grid !important; gap: 10px !important; }
+  .app-shell.one-screen-game .market.mobile-info-panel { order: 0 !important; }
+
+  /* Remove all later mobile-only navigation/panel layers. */
+  .mobile-quick-toolbar,
+  .mobile-my-info,
+  .mobile-log-card,
+  .mobile-action-bar,
+  .mobile-info-tabs,
+  .mobile-sheet-backdrop,
+  .mobile-sheet-handle,
+  .mobile-sheet-close,
+  .mobile-player-summary,
+  .mobile-player-strip,
+  .mobile-player-panel,
+  .mobile-market-panel {
+    display: none !important;
+  }
+
+  .app-shell.one-screen-game .header {
+    position: static !important;
+    width: 100% !important;
+    height: auto !important;
+    align-items: flex-start !important;
+    flex-wrap: wrap !important;
+  }
+  .app-shell.one-screen-game .top-actions { flex-wrap: wrap !important; }
+
+  .app-shell.one-screen-game .turn-banner {
+    position: static !important;
+    width: 100% !important;
+    height: auto !important;
+    min-height: 0 !important;
+    flex-direction: column !important;
+    align-items: flex-start !important;
+  }
+
+  /* Board behaves like the old version: normal card + local horizontal scrolling only. */
+  .app-shell.one-screen-game .board-card {
+    position: static !important;
+    display: block !important;
+    width: 100% !important;
+    height: auto !important;
+    min-height: 0 !important;
+    overflow: visible !important;
+    padding: 8px !important;
+  }
+  .app-shell.one-screen-game .board-wrap {
+    display: block !important;
+    width: 100% !important;
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    overflow-x: auto !important;
+    overflow-y: visible !important;
+    -webkit-overflow-scrolling: touch !important;
+    padding-bottom: 5px !important;
+  }
+  .app-shell.one-screen-game .board {
+    display: grid !important;
+    width: 620px !important;
+    min-width: 620px !important;
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    grid-template-columns: repeat(12, 48px) !important;
+    grid-template-rows: repeat(9, 44px) !important;
+    grid-auto-rows: 44px !important;
+    gap: 4px !important;
+    transform: none !important;
+    margin: 0 !important;
+  }
+  .app-shell.one-screen-game .board .cell {
+    width: 48px !important;
+    min-width: 48px !important;
+    height: 44px !important;
+    min-height: 44px !important;
+    aspect-ratio: auto !important;
+  }
+
+  /* Original hand layout. */
+  .app-shell.one-screen-game .hand-card {
+    display: block !important;
+    width: 100% !important;
+    height: auto !important;
+    overflow: visible !important;
+  }
+  .app-shell.one-screen-game .hand {
+    display: grid !important;
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+    gap: 8px !important;
+    width: 100% !important;
+  }
+  .app-shell.one-screen-game .hand-tile {
+    min-width: 0 !important;
+    min-height: 62px !important;
+  }
+
+  /* Original player section: ordinary cards in page flow. */
+  .app-shell.one-screen-game .players-grid-mobile {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 8px !important;
+    width: 100% !important;
+  }
+  .app-shell.one-screen-game .player-card {
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: none !important;
+    margin: 0 !important;
+    overflow: visible !important;
+  }
+  .app-shell.one-screen-game .stock-tags {
+    display: flex !important;
+    flex-wrap: wrap !important;
+    gap: 4px !important;
+    max-height: none !important;
+    overflow: visible !important;
+  }
+
+  /* Original stock exchange: always visible as a normal section. */
+  .app-shell.one-screen-game .market.mobile-info-panel {
+    padding: 10px !important;
+    border-radius: 14px !important;
+  }
+  .app-shell.one-screen-game .market.mobile-info-panel .hotel-list {
+    display: grid !important;
+    grid-template-columns: 1fr !important;
+    gap: 8px !important;
+    width: 100% !important;
+    overflow: visible !important;
+  }
+  .app-shell.one-screen-game .market.mobile-info-panel .hotel {
+    display: grid !important;
+    grid-template-columns: 42px minmax(0,1fr) auto !important;
+    gap: 8px !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    padding: 8px !important;
+    align-items: center !important;
+  }
+  .app-shell.one-screen-game .market.mobile-info-panel .stock-step {
+    display: grid !important;
+    grid-template-columns: 36px 36px 36px !important;
+    gap: 5px !important;
+    width: auto !important;
+    margin: 0 !important;
+  }
+  .app-shell.one-screen-game .market.mobile-info-panel .stock-step button {
+    width: 36px !important;
+    min-width: 36px !important;
+    height: 36px !important;
+    min-height: 36px !important;
+  }
+  .app-shell.one-screen-game .market.mobile-info-panel .stock-step b {
+    display: grid !important;
+    place-items: center !important;
+    width: 36px !important;
+    min-width: 36px !important;
+    height: 36px !important;
+  }
+  .app-shell.one-screen-game .market.mobile-info-panel .log-box {
+    display: block !important;
+    max-height: 230px !important;
+    overflow: auto !important;
+  }
+
+  /* No sticky/fixed gameplay furniture from later experiments. */
+  .one-screen-game .sticky,
+  .one-screen-game .fixed,
+  .one-screen-game [class*="sticky-action"] {
+    position: static !important;
+  }
+}
+
+@media (max-width: 390px) {
+  .app-shell.one-screen-game .players-grid-mobile { grid-template-columns: 1fr !important; }
+  .app-shell.one-screen-game .hand { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+  .app-shell.one-screen-game .market.mobile-info-panel .hotel {
+    grid-template-columns: 40px minmax(0,1fr) !important;
+    grid-template-rows: auto auto !important;
+  }
+  .app-shell.one-screen-game .market.mobile-info-panel .stock-step {
+    grid-column: 1 / -1 !important;
+    justify-self: start !important;
+  }
+}

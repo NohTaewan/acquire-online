@@ -45,3 +45,6 @@ v29를 기반으로 모바일 화면을 다시 단순화한 버전입니다.
 ## v34
 - Fixed mobile board collapsing to zero height due to legacy one-screen flex CSS.
 - Board now always occupies its own document height and scrolls horizontally only.
+
+## v36 — true early-mobile restore
+Mobile layout is restored to the original prototype approach: ordinary document flow with player cards, board/hand, stock market and log stacked naturally. Later bottom sheets, fixed action bars, viewport fitting and mobile-only game panels are disabled. The board alone keeps local horizontal scrolling.
